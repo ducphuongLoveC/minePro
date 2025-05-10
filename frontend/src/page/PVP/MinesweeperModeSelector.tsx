@@ -13,7 +13,6 @@ const gameModes: GameMode[] = [
   { name: 'Expert', rows: 16, cols: 30 },
 ];
 
-
 interface MinesweeperModeSelectorProps {
   onModeChange: (mode: GameMode) => void;
 }
