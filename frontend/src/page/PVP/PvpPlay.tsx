@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, use } from "react";
 import { io, Socket } from "socket.io-client";
 import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+
 import { FaCopy, FaSignOutAlt, FaUser, FaCrown, FaSkull } from "react-icons/fa";
 import CustomDialog from "../../components/CustomDialog";
 
@@ -10,9 +10,9 @@ import { BeatLoader } from "react-spinners";
 const socket: Socket = io("http://localhost:3000");
 
 import { v4 as uuidv4 } from "uuid";
-import MinesweeperModeSelector from "./MinesweeperModeSelector";
+import MinesweeperModeSelector from "../Components/MinesweeperModeSelector";
 
-const numberColorClasses = {
+export const numberColorClasses = {
   1: "text-blue-600",
   2: "text-green-600",
   3: "text-red-600",
@@ -23,7 +23,7 @@ const numberColorClasses = {
   8: "text-gray-600",
 };
 
-function isNumber(value) {
+export function isNumber(value) {
   return typeof value === "number" && !isNaN(value);
 }
 
@@ -32,7 +32,7 @@ interface PlayerState {
   flags: Set<number>;
 }
 
-interface Player {
+export interface Player {
   id: string;
   name: string;
   status: "playing" | "won" | "lost";
@@ -158,6 +158,8 @@ const PvpPlay: React.FC = () => {
       },
 
       replayConfirmed: ({ gameStates, playerStates, playersStatus }: any) => {
+        console.log('check replayConfirmed');
+
         setGameStates(gameStates);
         setPlayerStates(normalizePlayerStates(playerStates));
         setPlayers(
@@ -656,7 +658,6 @@ const PvpPlay: React.FC = () => {
         </div>
       </CustomDialog>
 
-      <ToastContainer position="top-right" autoClose={2000} />
     </div>
   );
 };

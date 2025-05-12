@@ -4,7 +4,7 @@ const rooms = {};
 
 function pvp(io, socket) {
 
-    function setGame(roomId) {
+    function AllEmitsetGames(roomId) {
         io.to(roomId).emit('setGames', {
             gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
             playerStates: Object.fromEntries(
@@ -38,7 +38,6 @@ function pvp(io, socket) {
                 playersStatus: [],
                 saveConfig: {}
             };
-
             socket.emit('roomCreated', { roomId });
         }
 
@@ -75,7 +74,7 @@ function pvp(io, socket) {
 
         console.log(`User ${socket.id} joined room ${roomId}. Players: ${rooms[roomId].players.length}`);
 
-        setGame(roomId)
+        AllEmitsetGames(roomId)
 
     });
 
@@ -85,7 +84,7 @@ function pvp(io, socket) {
         const playersStatus = rooms[roomId].playersStatus;
         const found = playersStatus.find(entry => entry[socket.id])?.[socket.id];
         found.isReady = !found.isReady;
-        setGame(roomId)
+        AllEmitsetGames(roomId)
     })
 
     socket.on('startGame', (roomId) => {
@@ -107,10 +106,44 @@ function pvp(io, socket) {
         socket.to(roomId).emit('sendReplayGame', { message: 'Chơi thêm ván nữa nhé!' })
     })
 
-    socket.on('confirmReplay', (roomId) => {
-        socket.to(roomId).emit('replayConfirmed', { message: 'Chơi thêm ván nữa nhé!' })
+    socket.on('confirmReplay', ({ roomId }) => {
+        // console.log('server check confirmReplay');
+
+        const { players,
+            games,
+            playerStates,
+            // playersStatus,
+            saveConfig } = rooms[roomId];
+
+        const { rows, cols, mines } = saveConfig;
+
+
+        players.forEach((id) => {
+            games[id] = new MinesweeperGame(rows || 9, cols || 9, mines || null)
+            games[id].start();
+            playerStates[id] = {
+                revealedCells: new Set(),
+                flags: new Set()
+            }
+        })
+
+        io.to(roomId).emit('replayConfirmed', {
+            gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
+            playerStates: Object.fromEntries(
+                Object.entries(rooms[roomId].playerStates).map(([id, state]) => [
+                    id,
+                    {
+                        revealedCells: Array.from(state.revealedCells),
+                        flags: Array.from(state.flags)
+                    }
+                ]
+                )
+            ),
+            playersStatus: rooms[roomId].playersStatus,
+            message: 'Chơi thêm ván nữa nhé!'
+        })
     })
-    socket.on('declineReplay', (roomId) => {
+    socket.on('declineReplay', ({ roomId }) => {
         socket.to(roomId).emit('replayDeclined', { message: 'Chơi thêm ván nữa nhé!' })
     })
 
