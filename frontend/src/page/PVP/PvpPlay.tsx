@@ -39,6 +39,11 @@ interface Player {
   isReady: boolean;
 }
 
+interface DialogProp {
+  end: boolean,
+  replay: boolean
+}
+
 const PvpPlay: React.FC = () => {
   const [roomId, setRoomId] = useState<string>("");
   const [playerId, setPlayerId] = useState<string | null>(null);
@@ -49,7 +54,10 @@ const PvpPlay: React.FC = () => {
   }>({});
   const [players, setPlayers] = useState<Player[]>([]);
   const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
-  const [openDialog, setOpenDialog] = useState<boolean>(false);
+  const [openDialog, setOpenDialog] = useState<DialogProp>({
+    end: false,
+    replay: false
+  });
   const [dialogMessage, setDialogMessage] = useState<string>("");
 
   const [configMode, setConfigMode] = useState<any>({});
@@ -57,6 +65,7 @@ const PvpPlay: React.FC = () => {
   const [isHost, setIsHost] = useState(false);
 
   const [gameStarted, setGameStarted] = useState(false);
+  const [endedGame, setEndedGame] = useState(false);
 
   const normalizePlayerStates = useCallback(
     (states: {
@@ -141,6 +150,38 @@ const PvpPlay: React.FC = () => {
         toast.success(message);
       },
 
+      sendReplayGame: ({ message }) => {
+        setDialogMessage(message);
+        setOpenDialog((pre) => ({
+          ...pre, replay: true
+        }))
+      },
+
+      replayConfirmed: ({ gameStates, playerStates, playersStatus }: any) => {
+        setGameStates(gameStates);
+        setPlayerStates(normalizePlayerStates(playerStates));
+        setPlayers(
+          playersStatus.map((pl) => {
+            const [id, player]: any = Object.entries(pl)[0];
+            return {
+              id,
+              name: player.playerName,
+              status: "playing",
+              isReady: player.isReady,
+            };
+          })
+        );
+        setGameStarted(true);
+        setEndedGame(false);
+        setOpenDialog({ end: false, replay: false });
+        toast.success("Trò chơi đã được bắt đầu lại!");
+      },
+
+      replayDeclined: ({ message }: { message: string }) => {
+        toast.info(message || "Một người chơi đã từ chối chơi lại.");
+        setOpenDialog((pre) => ({ ...pre, replay: false }));
+      },
+
       playerNotReady: ({ message }) => {
         toast.info(message);
       },
@@ -158,7 +199,9 @@ const PvpPlay: React.FC = () => {
               ? "Bạn đã chạm vào mìn! Thua cuộc!"
               : "Đối thủ chạm mìn! Bạn thắng!";
           setDialogMessage(message);
-          setOpenDialog(true);
+          setOpenDialog((pre) => ({
+            ...pre, end: true
+          }));
           setPlayers((prev) =>
             prev.map((p) =>
               p.id === action.playerId
@@ -172,7 +215,9 @@ const PvpPlay: React.FC = () => {
               ? "Bạn đã thắng!"
               : "Đối thủ đã thắng!";
           setDialogMessage(message);
-          setOpenDialog(true);
+          setOpenDialog((pre) => ({
+            ...pre, end: true
+          }));
           setPlayers((prev) =>
             prev.map((p) =>
               p.id === action.playerId
@@ -186,8 +231,12 @@ const PvpPlay: React.FC = () => {
         setDialogMessage(
           message || (winner === playerId ? "Bạn đã thắng!" : "Bạn đã thua!")
         );
-        setOpenDialog(true);
+        setOpenDialog((pre) => ({
+          ...pre, end: true
+        }));
         setGameStarted(false);
+        setEndedGame(true);
+        // setEndedGame(true);
         // setGameStates(null);
         // setPlayerStates({});
         // setRoomId('');
@@ -237,6 +286,10 @@ const PvpPlay: React.FC = () => {
 
   const startGame = useCallback(() => {
     socket.emit("startGame", roomId);
+  }, [roomId, playerName]);
+
+  const replayGame = useCallback(() => {
+    socket.emit("replayGame", roomId);
   }, [roomId, playerName]);
 
   const toggleReadyGame = useCallback(() => {
@@ -432,7 +485,17 @@ const PvpPlay: React.FC = () => {
 
     // Host controls
     if (isHost) {
-      return Object.entries(gameStates).length === 2 ? (
+      if (endedGame) {
+        return (
+          <button
+            onClick={replayGame}
+            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
+          >
+            Chơi lại
+          </button>
+        );
+      }
+      return Object.keys(gameStates).length === 2 ? (
         <button
           onClick={startGame}
           className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-full transition-colors"
@@ -462,14 +525,12 @@ const PvpPlay: React.FC = () => {
     return (
       <div
         key={player.id}
-        className={`flex items-center p-3 rounded-lg ${
-          isCurrentPlayer ? "bg-blue-50" : "bg-gray-50"
-        }`}
+        className={`flex items-center p-3 rounded-lg ${isCurrentPlayer ? "bg-blue-50" : "bg-gray-50"
+          }`}
       >
         <div
-          className={`flex items-center justify-center w-8 h-8 rounded-full mr-3 ${
-            isCurrentPlayer ? "bg-blue-500 text-white" : "bg-gray-300"
-          }`}
+          className={`flex items-center justify-center w-8 h-8 rounded-full mr-3 ${isCurrentPlayer ? "bg-blue-500 text-white" : "bg-gray-300"
+            }`}
         >
           <FaUser />
         </div>
@@ -488,11 +549,10 @@ const PvpPlay: React.FC = () => {
             )}
 
             <div
-              className={`ml-1 inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                player.isReady
-                  ? "bg-green-200 text-green-800"
-                  : "bg-gray-200 text-gray-600"
-              }`}
+              className={`ml-1 inline-block px-2 py-1 text-xs font-medium rounded-full ${player.isReady
+                ? "bg-green-200 text-green-800"
+                : "bg-gray-200 text-gray-600"
+                }`}
             >
               {player.isReady ? "Đã sẵn sàng" : "Chưa sẵn sàng"}
             </div>
@@ -527,9 +587,8 @@ const PvpPlay: React.FC = () => {
             <h3 className="text-lg font-semibold mb-2 flex items-center">
               {players.find((p) => p.id === pId)?.name}
               <span
-                className={`ml-2 text-sm text-white px-2 py-1 rounded ${
-                  pId === playerId ? "bg-blue-500" : "bg-gray-500"
-                }`}
+                className={`ml-2 text-sm text-white px-2 py-1 rounded ${pId === playerId ? "bg-blue-500" : "bg-gray-500"
+                  }`}
               >
                 {pId === playerId ? "Bạn" : "Đối thủ"}
               </span>
@@ -557,11 +616,44 @@ const PvpPlay: React.FC = () => {
 
       {/* Dialog và Toast */}
       <CustomDialog
-        open={openDialog}
+        open={openDialog.end}
         title="Kết thúc"
-        onClose={() => setOpenDialog(false)}
+        onClose={() => setOpenDialog((pre) => ({
+          ...pre, end: false
+        }))}
       >
         {dialogMessage}
+      </CustomDialog>
+
+
+      <CustomDialog
+        open={openDialog.replay}
+        title="Mời chơi lại"
+        onClose={() => setOpenDialog((pre) => ({ ...pre, replay: false }))}
+      >
+        <div>
+          <p>{dialogMessage}</p>
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={() => {
+                socket.emit("confirmReplay", { roomId, playerId });
+                setOpenDialog((pre) => ({ ...pre, replay: false }));
+              }}
+              className="px-4 py-2 bg-green-500 text-white rounded"
+            >
+              Chấp nhận
+            </button>
+            <button
+              onClick={() => {
+                socket.emit("declineReplay", { roomId, playerId });
+                setOpenDialog((pre) => ({ ...pre, replay: false }));
+              }}
+              className="px-4 py-2 bg-red-500 text-white rounded"
+            >
+              Từ chối
+            </button>
+          </div>
+        </div>
       </CustomDialog>
 
       <ToastContainer position="top-right" autoClose={2000} />

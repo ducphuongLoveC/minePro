@@ -103,6 +103,17 @@ function pvp(io, socket) {
         }
     })
 
+    socket.on('replayGame', (roomId) => {
+        socket.to(roomId).emit('sendReplayGame', { message: 'Chơi thêm ván nữa nhé!' })
+    })
+
+    socket.on('confirmReplay', (roomId) => {
+        socket.to(roomId).emit('replayConfirmed', { message: 'Chơi thêm ván nữa nhé!' })
+    })
+    socket.on('declineReplay', (roomId) => {
+        socket.to(roomId).emit('replayDeclined', { message: 'Chơi thêm ván nữa nhé!' })
+    })
+
     socket.on('openCell', ({ roomId, index }) => {
 
 
