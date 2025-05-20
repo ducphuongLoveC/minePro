@@ -1,62 +1,78 @@
-    import React from "react";
-    import { Outlet } from "react-router-dom";
-    import { Link } from "react-router-dom";
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
-    function MainLayout() {
-        return (
-            <div className="flex h-screen bg-gray-100">
-                {/* Sidebar */}
-                <div className="w-64 bg-blue-800 text-white p-4 flex flex-col">
-                    <h1 className="text-2xl font-bold mb-8 text-center">Minesweeper</h1>
+function MainLayout() {
+  return (
+    <div className="flex h-screen bg-gray-200 font-sans">
+      {/* Sidebar */}
+      <div className="w-56 bg-gray-200 p-3 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 flex flex-col">
+        <h1 className="text-lg font-bold text-gray-800 mb-6">Minesweeper</h1>
 
-                    <nav className="flex-1">
-                        <ul className="space-y-2">
-                            <li>
-                                <Link
-                                    to="/"
-                                    className="block px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
-                                >
-                                    🎮 Chơi đơn
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/pvp"
-                                    className="block px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
-                                >
-                                    👥 Chơi PVP
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/leaderboard"
-                                    className="block px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
-                                >
-                                    🏆 Bảng xếp hạng
-                                </Link>
-                            </li>
-                            <li>
-                                <Link
-                                    to="/settings"
-                                    className="block px-4 py-2 rounded hover:bg-blue-700 transition duration-200"
-                                >
-                                    ⚙️ Cài đặt
-                                </Link>
-                            </li>
-                        </ul>
-                    </nav>
+        <nav className="flex-1">
+          <ul className="space-y-1">
+            <li>
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `block px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${
+                    isActive ? "bg-gray-200" : "bg-gray-300 hover:bg-gray-400"
+                  }`
+                }
+              >
+                🎮 Chơi đơn
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/pvp"
+                className={({ isActive }) =>
+                  `block px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${
+                    isActive ? "bg-gray-200" : "bg-gray-300 hover:bg-gray-400"
+                  }`
+                }
+              >
+                👥 Chơi PVP
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/leaderboard"
+                className={({ isActive }) =>
+                  `block px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${
+                    isActive ? "bg-gray-200" : "bg-gray-300 hover:bg-gray-400"
+                  }`
+                }
+              >
+                🏆 Bảng xếp hạng
+              </NavLink>
+            </li>
+            <li>
+              <NavLink
+                to="/settings"
+                className={({ isActive }) =>
+                  `block px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${
+                    isActive ? "bg-gray-200" : "bg-gray-300 hover:bg-gray-400"
+                  }`
+                }
+              >
+                ⚙️ Cài đặt
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
 
-                    <div className="mt-auto pt-4 border-t border-blue-700">
-                        <div className="text-sm text-blue-200">Phiên bản 1.0.0</div>
-                    </div>
-                </div>
+        <div className="mt-auto pt-3 border-t-2 border-t-white border-b-gray-500">
+          <div className="text-xs text-gray-500">Phiên bản 1.0.0</div>
+        </div>
+      </div>
 
-                {/* Main content */}
-                <div className="flex-1 overflow-auto p-6">
-                    <Outlet />
-                </div>
-            </div>
-        );
-    }
+      {/* Main content */}
+      <div className="flex-1 overflow-auto p-4 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500">
+        <Outlet />
+      </div>
+    </div>
+  );
+}
 
-    export default MainLayout;
+export default MainLayout;

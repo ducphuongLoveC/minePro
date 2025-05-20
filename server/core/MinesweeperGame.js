@@ -26,24 +26,6 @@ class MinesweeperGame {
         return mineCount;
     }
 
-    // getIndexAround(currentIndex) {
-    //     const col = currentIndex % this.ratioX;
-    //     const row = Math.floor(currentIndex / this.ratioX);
-    //     const result = [];
-
-    //     for (let dy = -1; dy <= 1; dy++) {
-    //         for (let dx = -1; dx <= 1; dx++) {
-    //             if (dx === 0 && dy === 0) continue;
-    //             const newRow = row + dy;
-    //             const newCol = col + dx;
-    //             if (newRow >= 0 && newRow < this.ratioY && newCol >= 0 && newCol < this.ratioX) {
-    //                 result.push(newRow * this.ratioX + newCol);
-    //             }
-    //         }
-    //     }
-    //     return result;
-    // }
-
     getIndexAround(currentIndex) {
         const col = currentIndex % this.ratioY;  // ratioY là số cột
         const row = Math.floor(currentIndex / this.ratioY);  // ratioY là số cột
@@ -101,6 +83,84 @@ class MinesweeperGame {
 
     }
 
+    // chording(index, flags) {
+
+    //     if (this.gameOver || !this.cells[index].isOpen) {
+    //         return { success: false, openedIndices: [], isMine: false };
+    //     }
+
+    //     const indexAround = this.getIndexAround(index);
+
+    //     const flagCount = indexAround.reduce((count, idx) => {
+    //         return count + (flags.includes(idx) ? 1 : 0);
+    //     }, 0);
+
+    //     if (flagCount !== this.cells[index].count) {
+    //         return { success: false, openedIndices: [], isMine: false };
+    //     }
+
+    //     const result = {
+    //         success: true,
+    //         openedIndices: [],
+    //         isMine: false
+    //     };
+
+    //     for (const neighborIndex of indexAround) {
+    //         if (!flags.includes(neighborIndex) && !this.cells[neighborIndex].isOpen) {
+    //             const openResult = this.openCell(neighborIndex);
+    //             if (openResult.isMine) {
+    //                 result.isMine = true;
+    //                 result.success = false;
+    //                 return result;
+    //             }
+    //             result.openedIndices.push(...openResult.openedIndices);
+    //         }
+    //     }
+
+    //     return result;
+    // }
+
+    chording(index, flags) {
+        if (this.gameOver || !this.cells[index].isOpen) {
+            return { success: false, openedIndices: [], isMine: false };
+        }
+
+        const indexAround = this.getIndexAround(index);
+
+        const flagCount = indexAround.reduce((count, idx) => {
+            return count + (flags.includes(idx) ? 1 : 0);
+        }, 0);
+
+        if (flagCount !== this.cells[index].count) {
+            return { success: false, openedIndices: [], isMine: false };
+        }
+
+        const result = {
+            success: true,
+            openedIndices: [],
+            isMine: false
+        };
+
+        for (const neighborIndex of indexAround) {
+            if (!flags.includes(neighborIndex) && !this.cells[neighborIndex].isOpen) {
+                const openResult = this.openCell(neighborIndex);
+                if (openResult.isMine) {
+                    result.isMine = true;
+                    result.success = false;
+                    return result;
+                }
+                result.openedIndices.push(...openResult.openedIndices);
+            }
+        }
+        
+        if (this.openedCells === this.getTotalCells() - this.isMines.length) {
+            this.gameOver = true;
+            result.isWin = true;
+        }
+
+        return result;
+    }
+
     openCell(index) {
         if (this.gameOver || this.cells[index].isOpen) return false;
 
@@ -109,7 +169,7 @@ class MinesweeperGame {
 
         if (this.cells[index].isMine) {
             this.gameOver = true;
-            return { success: false, isMine: true };
+            return { success: false, isMine: true, mines: this.isMines };
         }
 
         const result = {
@@ -152,6 +212,7 @@ class MinesweeperGame {
             gameOver: this.gameOver,
             openedCells: this.openedCells,
             totalMines: this.totalMines(),
+            mines: this.isMines
         };
     }
 }

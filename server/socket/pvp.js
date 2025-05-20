@@ -3,10 +3,80 @@ const MinesweeperGame = require('../core/MinesweeperGame.js');
 const rooms = {};
 
 function pvp(io, socket) {
+    function DeletePlayer(roomId, playerId) {
+        if (!rooms[roomId] || !rooms[roomId].players.includes(playerId)) return;
 
-    function AllEmitsetGames(roomId) {
+        // Remove player from players array
+        rooms[roomId].players = rooms[roomId].players.filter(id => id !== playerId);
+
+        // Remove player's game and state
+        delete rooms[roomId].games[playerId];
+        delete rooms[roomId].playerStates[playerId];
+
+        // Update playersStatus and assign new host if needed
+        rooms[roomId].playersStatus = rooms[roomId].playersStatus.filter(
+            entry => !entry[playerId]
+        );
+
+        // If a player remains, make them the host and reset their game
+        if (rooms[roomId].players.length === 1) {
+            const remainingPlayerId = rooms[roomId].players[0];
+            const remainingPlayerStatus = rooms[roomId].playersStatus.find(
+                entry => entry[remainingPlayerId]
+            );
+            if (remainingPlayerStatus) {
+                remainingPlayerStatus[remainingPlayerId].isHost = true;
+                remainingPlayerStatus[remainingPlayerId].isReady = true;
+            }
+
+            // Reset the remaining player's game
+            const { rows, cols, mines } = rooms[roomId].saveConfig;
+            rooms[roomId].games[remainingPlayerId] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+            rooms[roomId].games[remainingPlayerId].start();
+            rooms[roomId].playerStates[remainingPlayerId] = {
+                revealedCells: new Set(),
+                flags: new Set()
+            };
+        }
+
+        // Notify room of player leaving and reset game for remaining player
+        socket.to(roomId).emit('playerLeft', {
+            playerId,
+            message: 'Người chơi đã rời khỏi phòng',
+            playersStatus: rooms[roomId].playersStatus,
+            gameStates: rooms[roomId].players.length === 1 ? {
+                [rooms[roomId].players[0]]: rooms[roomId].games[rooms[roomId].players[0]].getState()
+            } : {},
+            playerStates: rooms[roomId].players.length === 1 ? {
+                [rooms[roomId].players[0]]: {
+                    revealedCells: [],
+                    flags: []
+                }
+            } : {}
+        });
+
+        // Notify the leaving player to return to lobby
+        socket.emit('returnToLobby', {
+            message: 'Bạn đã rời khỏi phòng',
+            roomId
+        });
+
+        // Delete room if empty
+        if (rooms[roomId].players.length === 0) {
+            delete rooms[roomId];
+            console.log(`Phòng ${roomId} đã được xóa`);
+            return;
+        }
+
+        console.log(`Player ${playerId} removed from room ${roomId}`);
+    }
+
+    function AllEmitSetGames(roomId) {
+        if (!rooms[roomId]) return;
         io.to(roomId).emit('setGames', {
-            gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
+            gameStates: Object.fromEntries(
+                Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])
+            ),
             playerStates: Object.fromEntries(
                 Object.entries(rooms[roomId].playerStates).map(([id, state]) => [
                     id,
@@ -14,17 +84,34 @@ function pvp(io, socket) {
                         revealedCells: Array.from(state.revealedCells),
                         flags: Array.from(state.flags)
                     }
-                ]
-                )
+                ])
             ),
             playersStatus: rooms[roomId].playersStatus
-        })
+        });
     }
+
+    function emitRoomList() {
+        const roomList = Object.entries(rooms).map(([roomId, room]) => ({
+            id: roomId,
+            name: room.playersStatus[0]?.[room.players[0]]?.playerName
+                ? `Phòng của ${room.playersStatus[0][room.players[0]].playerName}`
+                : `Phòng ${roomId}`,
+            currentPlayers: room.players.length,
+            maxPlayers: 2
+        }));
+
+        io.emit('roomList', roomList);
+    }
+
+    socket.on('emitRoomList', () => {
+        emitRoomList();
+    })
+
 
     socket.on('joinRoom', (roomId, playerName, configMode) => {
         console.log('configMode', configMode);
-
         console.log(`User ${socket.id} attempting to join room ${roomId}`);
+
         if (!roomId || typeof roomId !== 'string' || roomId.trim() === '') {
             socket.emit('error', { message: 'Invalid room ID' });
             return;
@@ -47,88 +134,90 @@ function pvp(io, socket) {
         }
 
         if (configMode) {
-            rooms[roomId].saveConfig = configMode
+            rooms[roomId].saveConfig = configMode;
         }
         const { rows, cols, mines } = rooms[roomId].saveConfig;
 
         rooms[roomId].players.push(socket.id);
-
-        rooms[roomId].games[socket.id] = new MinesweeperGame(rows || 9, cols || 9, mines || null)
+        rooms[roomId].games[socket.id] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
         rooms[roomId].games[socket.id].start();
-
         rooms[roomId].playerStates[socket.id] = {
             revealedCells: new Set(),
             flags: new Set()
         };
 
+        const isHost = rooms[roomId].players.length === 1;
         rooms[roomId].playersStatus.push({
             [socket.id]: {
-                playerName: playerName ? playerName : 'Player ' + rooms[roomId].players.length,
-                isReady: rooms[roomId].players.length === 1 ? true : false,
+                playerName: playerName || `Player ${rooms[roomId].players.length}`,
+                isReady: isHost,
+                isHost
             }
         });
 
         socket.join(roomId);
         socket.emit('joinedRoom', { roomId, playerId: socket.id });
-        console.log(rooms[roomId].playersStatus);
-
         console.log(`User ${socket.id} joined room ${roomId}. Players: ${rooms[roomId].players.length}`);
 
-        AllEmitsetGames(roomId)
-
+        AllEmitSetGames(roomId);
+        emitRoomList();
     });
 
     socket.on('toggleReadyGame', (roomId) => {
         if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
 
-        const playersStatus = rooms[roomId].playersStatus;
-        const found = playersStatus.find(entry => entry[socket.id])?.[socket.id];
-        found.isReady = !found.isReady;
-        AllEmitsetGames(roomId)
-    })
+        const playerStatus = rooms[roomId].playersStatus.find(entry => entry[socket.id])?.[socket.id];
+        if (playerStatus && !playerStatus.isHost) {
+            playerStatus.isReady = !playerStatus.isReady;
+            AllEmitSetGames(roomId);
+        }
+    });
 
     socket.on('startGame', (roomId) => {
+        if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
 
-        const canReady = rooms[roomId].playersStatus.every((pl) => {
+        const playerStatus = rooms[roomId].playersStatus.find(entry => entry[socket.id])?.[socket.id];
+        if (!playerStatus?.isHost) {
+            socket.emit('error', { message: 'Chỉ host mới có thể bắt đầu game!' });
+            return;
+        }
+
+        const canStart = rooms[roomId].playersStatus.every(pl => {
             const [, player] = Object.entries(pl)[0];
             return player.isReady;
-        })
+        });
 
-        if (canReady) {
-            io.to(roomId).emit('canStartGame', { canStart: true, message: 'Game bắt đầu!' })
+        if (canStart) {
+            io.to(roomId).emit('canStartGame', { canStart: true, message: 'Game bắt đầu!' });
         } else {
-            socket.emit('playerNotReady', { message: 'Người chơi chưa sẵn sàng!' })
-
+            socket.emit('playerNotReady', { message: 'Người chơi chưa sẵn sàng!' });
         }
-    })
+    });
 
     socket.on('replayGame', (roomId) => {
-        socket.to(roomId).emit('sendReplayGame', { message: 'Chơi thêm ván nữa nhé!' })
-    })
+        if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
+        socket.to(roomId).emit('sendReplayGame', { message: 'Chơi thêm ván nữa nhé!' });
+    });
 
     socket.on('confirmReplay', ({ roomId }) => {
-        // console.log('server check confirmReplay');
+        if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
 
-        const { players,
-            games,
-            playerStates,
-            // playersStatus,
-            saveConfig } = rooms[roomId];
-
+        const { players, games, playerStates, saveConfig } = rooms[roomId];
         const { rows, cols, mines } = saveConfig;
 
-
         players.forEach((id) => {
-            games[id] = new MinesweeperGame(rows || 9, cols || 9, mines || null)
+            games[id] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
             games[id].start();
             playerStates[id] = {
                 revealedCells: new Set(),
                 flags: new Set()
-            }
-        })
+            };
+        });
 
         io.to(roomId).emit('replayConfirmed', {
-            gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
+            gameStates: Object.fromEntries(
+                Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])
+            ),
             playerStates: Object.fromEntries(
                 Object.entries(rooms[roomId].playerStates).map(([id, state]) => [
                     id,
@@ -136,43 +225,112 @@ function pvp(io, socket) {
                         revealedCells: Array.from(state.revealedCells),
                         flags: Array.from(state.flags)
                     }
-                ]
-                )
+                ])
             ),
             playersStatus: rooms[roomId].playersStatus,
             message: 'Chơi thêm ván nữa nhé!'
-        })
-    })
+        });
+    });
+
     socket.on('declineReplay', ({ roomId }) => {
-        socket.to(roomId).emit('replayDeclined', { message: 'Chơi thêm ván nữa nhé!' })
-    })
+        socket.to(roomId).emit('replayDeclined', { message: 'Người chơi đã từ chối chơi lại.' });
+    });
+
+    socket.on('chording', ({ roomId, index }) => {
+        if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
+
+        const currentGamePlayer = rooms[roomId].games[socket.id];
+        const playerState = rooms[roomId].playerStates[socket.id];
+        const flags = Array.from(playerState.flags);
+
+        const result = currentGamePlayer.chording(index, flags);
+        if (result.success) {
+            result.openedIndices.forEach(i => playerState.revealedCells.add(i));
+        }
+
+        if (result.isMine) {
+            const winner = rooms[roomId].players.find(id => id !== socket.id);
+            const winnerName = rooms[roomId].playersStatus.find(entry => entry[winner])?.[winner]?.playerName;
+            const loserName = rooms[roomId].playersStatus.find(entry => entry[socket.id])?.[socket.id]?.playerName;
+
+            const { mines } = currentGamePlayer.getState();
+            mines?.forEach(i => playerState.revealedCells.add(i));
+
+            io.to(roomId).emit('gameOver', {
+                winner,
+                loser: socket.id,
+                message: winner ? `${winnerName} thắng! ${loserName} chạm vào bom!` : 'Kết thúc game!'
+            });
+        }
+
+        io.to(roomId).emit('updateState', {
+            playerId: socket.id,
+            gameStates: Object.fromEntries(
+                Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])
+            ),
+            playerStates: {
+                [socket.id]: {
+                    revealedCells: Array.from(playerState.revealedCells),
+                    flags: Array.from(playerState.flags)
+                },
+                ...(rooms[roomId].players.length > 1 && {
+                    [rooms[roomId].players.find(id => id !== socket.id)]: {
+                        revealedCells: Array.from(
+                            rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].revealedCells
+                        ),
+                        flags: Array.from(
+                            rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].flags
+                        )
+                    }
+                })
+            },
+            action: { type: 'chord', index, result, playerId: socket.id }
+        });
+    });
+
 
     socket.on('openCell', ({ roomId, index }) => {
-
-
         if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
 
         const currentGamePlayer = rooms[roomId].games[socket.id];
         const playerState = rooms[roomId].playerStates[socket.id];
 
-        // Kiểm tra nếu ô đã được đánh dấu cờ thì không mở được
         if (playerState.flags.has(index)) return;
 
         const result = currentGamePlayer.openCell(index);
-
         if (result) {
-            // Thêm ô vừa mở vào revealedCells
             playerState.revealedCells.add(index);
-
-            // Nếu mở đệ quy (khi ô trống), thêm tất cả các ô đã mở
-            if (result.openedIndices && result.openedIndices.length > 0) {
+            if (result.openedIndices?.length > 0) {
                 result.openedIndices.forEach(i => playerState.revealedCells.add(i));
             }
 
+            const winner = rooms[roomId].players.find(id => id !== socket.id);
+            const winnerName = rooms[roomId].playersStatus.find(entry => entry[winner])?.[winner]?.playerName;
+            const loserName = rooms[roomId].playersStatus.find(entry => entry[socket.id])?.[socket.id]?.playerName;
+
+            if (result.isMine) {
+
+                const { mines } = result;
+                mines.forEach((i) => playerState.revealedCells.add(i))
+
+                io.to(roomId).emit('gameOver', {
+                    winner,
+                    loser: socket.id,
+                    message: winner ? `${winnerName} thắng! ${loserName} chạm vào bom!` : 'Kết thúc game!'
+                });
+            } else if (result.isWin) {
+                io.to(roomId).emit('gameOver', {
+                    winner: socket.id,
+                    loser: null,
+                    message: `${loserName} đã thắng game!`
+                });
+            }
 
             io.to(roomId).emit('updateState', {
                 playerId: socket.id,
-                gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
+                gameStates: Object.fromEntries(
+                    Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])
+                ),
                 playerStates: {
                     [socket.id]: {
                         revealedCells: Array.from(playerState.revealedCells),
@@ -180,44 +338,26 @@ function pvp(io, socket) {
                     },
                     ...(rooms[roomId].players.length > 1 && {
                         [rooms[roomId].players.find(id => id !== socket.id)]: {
-                            revealedCells: Array.from(rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].revealedCells),
-                            flags: Array.from(rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].flags)
+                            revealedCells: Array.from(
+                                rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].revealedCells
+                            ),
+                            flags: Array.from(
+                                rooms[roomId].playerStates[rooms[roomId].players.find(id => id !== socket.id)].flags
+                            )
                         }
                     })
                 },
-                action: { type: 'open', index, result, playerId: socket.id },
+                action: { type: 'open', index, result, playerId: socket.id }
             });
 
-            const winner = rooms[roomId].players.find(id => id !== socket.id);
-            const winnerName = rooms[roomId].playersStatus.find(entry => entry[winner])?.[winner].playerName;
-            const loseName = rooms[roomId].playersStatus.find(entry => entry[socket.id])?.[socket.id].playerName;
-            if (result.isMine) {
 
-                io.to(roomId).emit('gameOver', {
-                    winner,
-                    loser: socket.id,
-                    message: winner ? `${winnerName} thắng! ${loseName} chạm vào bom!` : 'kết thúc game!'
-                });
-            } else if (result.isWin) {
-                io.to(roomId).emit('gameOver', {
-                    winner: socket.id,
-                    loser: null,
-                    message: `${winnerName} đã thắng game!`
-                });
-            }
         }
     });
 
     socket.on('toggleFlag', ({ roomId, index }) => {
-
-        console.log(index);
-
         if (!rooms[roomId] || !rooms[roomId].players.includes(socket.id)) return;
 
-        // const game = rooms[roomId].game;
         const playerState = rooms[roomId].playerStates[socket.id];
-
-
         if (playerState.revealedCells.has(index)) return;
 
         if (playerState.flags.has(index)) {
@@ -226,11 +366,11 @@ function pvp(io, socket) {
             playerState.flags.add(index);
         }
 
-        console.log(playerState);
-
         io.to(roomId).emit('updateState', {
             playerId: socket.id,
-            gameStates: Object.fromEntries(Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])),
+            gameStates: Object.fromEntries(
+                Object.entries(rooms[roomId].games).map(([id, game]) => [id, game.getState()])
+            ),
             playerStates: Object.fromEntries(
                 Object.entries(rooms[roomId].playerStates).map(([id, state]) => [
                     id,
@@ -238,34 +378,25 @@ function pvp(io, socket) {
                         revealedCells: Array.from(state.revealedCells),
                         flags: Array.from(state.flags)
                     }
-                ]
-                )
+                ])
             ),
-            action: { type: 'flag', index, playerId: socket.id },
+            action: { type: 'flag', index, playerId: socket.id }
         });
     });
 
+    socket.on('leaveRoom', (roomId) => {
+        console.log(`Player ${socket.id} leaving room ${roomId}`);
+        DeletePlayer(roomId, socket.id);
+    });
+
     socket.on('disconnect', () => {
+        console.log(`Player ${socket.id} disconnected`);
         for (const roomId in rooms) {
-            const room = rooms[roomId];
-            const index = room.players.indexOf(socket.id);
-            if (index !== -1) {
-                room.players.splice(index, 1);
-                delete room.playerStates[socket.id];
-                io.to(roomId).emit('playerLeft');
-                if (room.players.length === 0) {
-                    delete rooms[roomId];
-                } else {
-                    // If one player leaves, end the game
-                    io.to(roomId).emit('gameOver', {
-                        winner: null,
-                        loser: null,
-                        message: 'Game ended because opponent disconnected'
-                    });
-                }
+            if (rooms[roomId].players.includes(socket.id)) {
+                DeletePlayer(roomId, socket.id);
             }
         }
-        console.log('A user disconnected:', socket.id);
     });
 }
+
 module.exports = pvp;

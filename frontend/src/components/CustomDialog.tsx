@@ -1,4 +1,3 @@
-// components/CustomDialog.tsx
 import React, { useEffect, useRef } from "react";
 
 type ActionButton = {
@@ -24,9 +23,9 @@ const sizeClasses: Record<string, string> = {
 };
 
 const buttonVariantClasses: Record<string, string> = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700",
-  secondary: "bg-gray-100 text-gray-700 hover:bg-gray-200",
-  danger: "bg-red-600 text-white hover:bg-red-700",
+  primary: "bg-gray-400 text-gray-800 hover:bg-gray-500",
+  secondary: "bg-gray-400 text-gray-800 hover:bg-gray-500",
+  danger: "bg-gray-400 text-gray-800 hover:bg-gray-500",
 };
 
 const CustomDialog: React.FC<CustomDialogProps> = ({
@@ -60,21 +59,21 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`bg-white rounded-2xl shadow-xl w-full ${sizeClasses[size]} p-6 relative animate-fadeIn`}
+        className={`bg-gray-300 w-full ${sizeClasses[size]} p-4 border-2 border-t-white border-l-white border-b-gray-600 border-r-gray-600 font-sans relative m-4 rounded-sm`}
       >
         {/* Close button */}
         <button
-          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100"
+          className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center text-gray-800 hover:bg-gray-400 border-2 border-t-white border-l-white border-b-gray-600 border-r-gray-600"
           onClick={onClose}
           aria-label="Close dialog"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
+            className="h-4 w-4"
             viewBox="0 0 20 20"
             fill="currentColor"
           >
@@ -88,27 +87,22 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
 
         {/* Title */}
         {title && (
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">{title}</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-3">{title}</h2>
         )}
 
         {/* Content */}
-        <div className="mb-6 text-gray-600">{children}</div>
+        <div className="mb-4 text-gray-800 text-sm">{children}</div>
 
         {/* Actions */}
         {actions.length > 0 && (
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-2">
             {actions.map((action, index) => (
               <button
                 key={index}
                 onClick={action.onClick}
                 disabled={action.disabled}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  buttonVariantClasses[action.variant || "secondary"]
-                } ${
-                  action.disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : "cursor-pointer"
-                }`}
+                className={`px-3 py-1 text-sm font-medium border-2 border-t-white border-l-white border-b-gray-600 border-r-gray-600 ${buttonVariantClasses[action.variant || "secondary"]
+                  } ${action.disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
               >
                 {action.label}
               </button>

@@ -21,11 +21,11 @@ function single(io, socket) {
     }
 
     socket.on('initializeGame', (configMode) => {
-        console.log('check222');
-        
+
         dataPlayer.saveConfig = configMode;
         const { rows, cols, mines } = dataPlayer.saveConfig;
         dataPlayer.gameState = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+        dataPlayer.gameState.start();
         dataPlayer.playerState = {
             revealedCells: new Set(),
             flags: new Set()
@@ -34,10 +34,37 @@ function single(io, socket) {
         socket.emit('setGames', getDataToSend());
     });
 
+    socket.on('chording', ({ index }) => {
+        const { gameState, playerState } = dataPlayer;
+
+        const flags = Array.from(playerState.flags);
+
+        const result = gameState.chording(index, flags);
+        if (result.success) {
+            result.openedIndices.forEach(i => playerState.revealedCells.add(i));
+        }
+
+        if (result.isMine) {
+
+            const { mines } = gameState.getState();
+            mines?.forEach(i => playerState.revealedCells.add(i));
+
+            socket.emit('gameOver', {
+                message: 'Bạn đã chạm vào bom'
+            });
+        }
+
+        socket.emit('updateState', {
+            ...getDataToSend(),
+            action: { type: 'chord', index, result }
+        });
+    })
+
+
     socket.on('openCell', ({ index }) => {
         if (index === undefined || index === null) return;
         if (!dataPlayer.gameState) return;
-        
+
         const currentGamePlayer = dataPlayer.gameState;
         const playerState = dataPlayer.playerState;
 
@@ -52,12 +79,11 @@ function single(io, socket) {
                 result.openedIndices.forEach(i => playerState.revealedCells.add(i));
             }
 
-            socket.emit('updateState', {
-                ...getDataToSend(),
-                action: { type: 'open', index, result }
-            });
-
             if (result.isMine) {
+                const { mines } = result;
+
+                mines.forEach((i) => playerState.revealedCells.add(i))
+
                 socket.emit('gameOver', {
                     message: 'Bạn đã thua!'
                 });
@@ -66,6 +92,11 @@ function single(io, socket) {
                     message: 'Bạn đã thắng game!'
                 });
             }
+
+            socket.emit('updateState', {
+                ...getDataToSend(),
+                action: { type: 'open', index, result }
+            });
         }
     });
 
