@@ -24,8 +24,16 @@ function SinglePlay() {
     const [socket, setSocket] = useState<any>(null);
 
     useEffect(() => {
-        const newSocket = io("http://localhost:3000/single");
+        const newSocket = io(`${import.meta.env.VITE_URL_SERVER}/single`, {
+            transports: ["websocket"],
+            reconnectionAttempts: 3,
+            reconnectionDelay: 1000,
+            autoConnect: false
+        });
+
+        newSocket.connect();
         setSocket(newSocket);
+
         return () => {
             newSocket.disconnect();
         };
@@ -51,7 +59,7 @@ function SinglePlay() {
         },
         [socket]
     );
-    
+
     const toggleFlag = useCallback(
         (index: number, e: React.MouseEvent) => {
             e.preventDefault();
@@ -60,51 +68,101 @@ function SinglePlay() {
         [socket]
     );
 
+    const handleError = useCallback(({ message }: { message: string }) => {
+        toast.error(message);
+    }, []);
+
+    const handleSetGames = useCallback(({ gameState, playerState }: any) => {
+        setGameState(gameState);
+        setPlayerState(normalizePlayerState(playerState));
+        setGameStarted(true);
+        setEndedGame(false);
+    }, [normalizePlayerState]);
+
+    const handleUpdateState = useCallback(({ gameState, playerState }: any) => {
+        setGameState(gameState);
+        setPlayerState(normalizePlayerState(playerState));
+    }, [normalizePlayerState]);
+
+    const handleGameOver = useCallback(({ message }: { message: string }) => {
+        setDialogMessage(message);
+        setOpenDialog({ end: true });
+        setGameStarted(false);
+        setEndedGame(true);
+    }, []);
+
     useEffect(() => {
         if (!socket) return;
 
-        const handleConnect = () => toast.success("Đã kết nối đến server!");
-        const handleDisconnect = () => toast.error("Mất kết nối với server!");
-        const handleError = ({ message }: { message: string }) => toast.error(message);
-        const handleSetGames = ({ gameState, playerState }: any) => {
-            setGameState(gameState);
-            setPlayerState(normalizePlayerState(playerState));
-            setGameStarted(true);
-            setEndedGame(false);
-        };
-        const handleUpdateState = ({ gameState, playerState }: any) => {
-            setGameState(gameState);
-            setPlayerState(normalizePlayerState(playerState));
-        };
-        const handleGameOver = ({ message }: { message: string }) => {
-            setDialogMessage(message);
-            setOpenDialog({ end: true });
-            setGameStarted(false);
-            setEndedGame(true);
-        };
-
-        socket.on("connect", handleConnect);
-        socket.on("disconnect", handleDisconnect);
         socket.on("error", handleError);
         socket.on("setGames", handleSetGames);
         socket.on("updateState", handleUpdateState);
         socket.on("gameOver", handleGameOver);
 
         return () => {
-            socket.off("connect", handleConnect);
-            socket.off("disconnect", handleDisconnect);
             socket.off("error", handleError);
             socket.off("setGames", handleSetGames);
             socket.off("updateState", handleUpdateState);
             socket.off("gameOver", handleGameOver);
         };
-    }, [socket, normalizePlayerState]);
+    }, [socket, handleError, handleSetGames, handleUpdateState, handleGameOver]);
 
     useEffect(() => {
         if (configMode && socket) {
             socket.emit("initializeGame", configMode);
         }
     }, [configMode, socket]);
+
+    const Cell = React.memo(({
+        cell,
+        index,
+        isRevealed,
+        isFlagged,
+        canInteract,
+        canChording,
+        openCell,
+        toggleFlag
+    }: {
+        cell: any,
+        index: number,
+        isRevealed: boolean,
+        isFlagged: boolean,
+        canInteract: boolean,
+        canChording: boolean,
+        openCell: (index: number) => void,
+        toggleFlag: (index: number, e: React.MouseEvent) => void
+    }) => {
+        let content = "";
+        if (isFlagged) content = "🚩";
+        else if (isRevealed)
+            content = cell.isMine ? "💣" : cell.count > 0 ? cell.count : "";
+
+        const cellClasses = [
+            getNumberClass(cell, isRevealed),
+            "flex items-center justify-center w-6 h-6 text-sm font-bold",
+            isRevealed
+                ? "bg-gray-200"
+                : "bg-gray-300 border-t-2 border-l-2 border-b-2 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500",
+            canInteract ? "cursor-pointer hover:bg-gray-400" : "cursor-default",
+        ].join(" ");
+
+        return (
+            <div
+                key={index}
+                className={cellClasses}
+                onClick={() => {
+                    if (canInteract) {
+                        openCell(index);
+                    } else if (canChording) {
+                        chording(index);
+                    }
+                }}
+                onContextMenu={canInteract ? (e) => toggleFlag(index, e) : undefined}
+            >
+                {content}
+            </div>
+        );
+    });
 
     const renderBoard = useCallback(() => {
         if (!gameState || !playerState) return null;
@@ -127,35 +185,18 @@ function SinglePlay() {
                     const canInteract = !isRevealed && !endedGame;
                     const canChording = currentRevealed.has(index) && !endedGame;
 
-                    let content = "";
-                    if (isFlagged) content = "🚩";
-                    else if (isRevealed)
-                        content = cell.isMine ? "💣" : cell.count > 0 ? cell.count : "";
-
-                    const cellClasses = [
-                        getNumberClass(cell, isRevealed),
-                        "flex items-center justify-center w-6 h-6 text-sm font-bold",
-                        isRevealed
-                            ? "bg-gray-200"
-                            : "bg-gray-300 border-t-2 border-l-2 border-b-2 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500",
-                        canInteract ? "cursor-pointer hover:bg-gray-400" : "cursor-default",
-                    ].join(" ");
-
                     return (
-                        <div
+                        <Cell
                             key={index}
-                            className={cellClasses}
-                            onClick={() => {
-                                if (canInteract) {
-                                    openCell(index);
-                                } else if (canChording) {
-                                    chording(index);
-                                }
-                            }}
-                            onContextMenu={canInteract ? (e) => toggleFlag(index, e) : undefined}
-                        >
-                            {content}
-                        </div>
+                            cell={cell}
+                            index={index}
+                            isRevealed={isRevealed}
+                            isFlagged={isFlagged}
+                            canInteract={canInteract}
+                            canChording={canChording}
+                            openCell={openCell}
+                            toggleFlag={toggleFlag}
+                        />
                     );
                 })}
             </div>
