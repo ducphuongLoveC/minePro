@@ -1,4 +1,4 @@
-const MinesweeperGame = require('../core/MinesweeperGame.js');
+const Minesweeper = require('../core/Minesweeper.js');
 
 function single(io, socket) {
     const dataPlayer = {
@@ -24,7 +24,7 @@ function single(io, socket) {
 
         dataPlayer.saveConfig = configMode;
         const { rows, cols, mines } = dataPlayer.saveConfig;
-        dataPlayer.gameState = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+        dataPlayer.gameState = new Minesweeper(rows || 9, cols || 9, mines || null);
         dataPlayer.gameState.start();
         dataPlayer.playerState = {
             revealedCells: new Set(),
@@ -51,6 +51,10 @@ function single(io, socket) {
 
             socket.emit('gameOver', {
                 message: 'Bạn đã chạm vào bom'
+            });
+        } else if (result.isWin) {
+            socket.emit('gameOver', {
+                message: 'Bạn đã thắng'
             });
         }
 

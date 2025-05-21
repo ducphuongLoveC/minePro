@@ -1,4 +1,4 @@
-class MinesweeperGame {
+class Minesweeper {
     constructor(ratioX, ratioY, mineCounter) {
         this.ratioX = ratioX;
         this.ratioY = ratioY;
@@ -82,45 +82,8 @@ class MinesweeperGame {
         }
 
     }
-
-    // chording(index, flags) {
-
-    //     if (this.gameOver || !this.cells[index].isOpen) {
-    //         return { success: false, openedIndices: [], isMine: false };
-    //     }
-
-    //     const indexAround = this.getIndexAround(index);
-
-    //     const flagCount = indexAround.reduce((count, idx) => {
-    //         return count + (flags.includes(idx) ? 1 : 0);
-    //     }, 0);
-
-    //     if (flagCount !== this.cells[index].count) {
-    //         return { success: false, openedIndices: [], isMine: false };
-    //     }
-
-    //     const result = {
-    //         success: true,
-    //         openedIndices: [],
-    //         isMine: false
-    //     };
-
-    //     for (const neighborIndex of indexAround) {
-    //         if (!flags.includes(neighborIndex) && !this.cells[neighborIndex].isOpen) {
-    //             const openResult = this.openCell(neighborIndex);
-    //             if (openResult.isMine) {
-    //                 result.isMine = true;
-    //                 result.success = false;
-    //                 return result;
-    //             }
-    //             result.openedIndices.push(...openResult.openedIndices);
-    //         }
-    //     }
-
-    //     return result;
-    // }
-
     chording(index, flags) {
+
         if (this.gameOver || !this.cells[index].isOpen) {
             return { success: false, openedIndices: [], isMine: false };
         }
@@ -148,14 +111,11 @@ class MinesweeperGame {
                     result.isMine = true;
                     result.success = false;
                     return result;
+                } else if (openResult.isWin) {
+                    result.isWin = true;
                 }
                 result.openedIndices.push(...openResult.openedIndices);
             }
-        }
-        
-        if (this.openedCells === this.getTotalCells() - this.isMines.length) {
-            this.gameOver = true;
-            result.isWin = true;
         }
 
         return result;
@@ -216,4 +176,4 @@ class MinesweeperGame {
         };
     }
 }
-module.exports = MinesweeperGame;
+module.exports = Minesweeper;

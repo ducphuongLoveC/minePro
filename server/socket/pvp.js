@@ -1,4 +1,4 @@
-const MinesweeperGame = require('../core/MinesweeperGame.js');
+const Minesweeper = require('../core/Minesweeper.js');
 
 const rooms = {};
 
@@ -31,7 +31,7 @@ function pvp(io, socket) {
 
             // Reset the remaining player's game
             const { rows, cols, mines } = rooms[roomId].saveConfig;
-            rooms[roomId].games[remainingPlayerId] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+            rooms[roomId].games[remainingPlayerId] = new Minesweeper(rows || 9, cols || 9, mines || null);
             rooms[roomId].games[remainingPlayerId].start();
             rooms[roomId].playerStates[remainingPlayerId] = {
                 revealedCells: new Set(),
@@ -139,7 +139,7 @@ function pvp(io, socket) {
         const { rows, cols, mines } = rooms[roomId].saveConfig;
 
         rooms[roomId].players.push(socket.id);
-        rooms[roomId].games[socket.id] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+        rooms[roomId].games[socket.id] = new Minesweeper(rows || 9, cols || 9, mines || null);
         rooms[roomId].games[socket.id].start();
         rooms[roomId].playerStates[socket.id] = {
             revealedCells: new Set(),
@@ -188,6 +188,7 @@ function pvp(io, socket) {
         });
 
         if (canStart) {
+            
             io.to(roomId).emit('canStartGame', { canStart: true, message: 'Game bắt đầu!' });
         } else {
             socket.emit('playerNotReady', { message: 'Người chơi chưa sẵn sàng!' });
@@ -206,7 +207,7 @@ function pvp(io, socket) {
         const { rows, cols, mines } = saveConfig;
 
         players.forEach((id) => {
-            games[id] = new MinesweeperGame(rows || 9, cols || 9, mines || null);
+            games[id] = new Minesweeper(rows || 9, cols || 9, mines || null);
             games[id].start();
             playerStates[id] = {
                 revealedCells: new Set(),
@@ -244,6 +245,8 @@ function pvp(io, socket) {
         const flags = Array.from(playerState.flags);
 
         const result = currentGamePlayer.chording(index, flags);
+
+        
         if (result.success) {
             result.openedIndices.forEach(i => playerState.revealedCells.add(i));
         }
@@ -260,6 +263,12 @@ function pvp(io, socket) {
                 winner,
                 loser: socket.id,
                 message: winner ? `${winnerName} thắng! ${loserName} chạm vào bom!` : 'Kết thúc game!'
+            });
+        } else if (result.isWin) {
+            io.to(roomId).emit('gameOver', {
+                winner: socket.id,
+                loser: null,
+                message: `${loserName} đã thắng game!`
             });
         }
 
