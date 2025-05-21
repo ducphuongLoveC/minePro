@@ -41,13 +41,12 @@ interface DialogProp {
 }
 
 interface PvpPlayProp {
-  id?: string
   socket: any
   onInRoom: () => void
   onLeaveRoom: () => void
 }
 
-const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) => {
+const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
   const [roomId, setRoomId] = useState<string>('');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState<string>("");
@@ -81,17 +80,19 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
   };
 
   useEffect(() => {
+
+    console.log("Registering socket events");
     const handlers = {
-      connect: () => {
-        setIsConnected(true);
-        toast.success("Đã kết nối đến server!");
-      },
-      disconnect: () => {
-        setIsConnected(false);
-        toast.error("Mất kết nối với server!");
-      },
+      // connect: () => {
+      //   setIsConnected(true);
+      //   toast.success("Đã kết nối đến server!");
+      // },
+      // disconnect: () => {
+      //   setIsConnected(false);
+      //   toast.error("Mất kết nối với server!");
+      // },
       roomCreated: ({ roomId }: { roomId: string }) => {
-        toast.success(`Phòng ${roomId} đã được tạo!`);
+        // toast.success(`Phòng ${roomId} đã được tạo!`);
       },
       error: ({ message }: { message: string }) => {
         toast.error(message);
@@ -99,7 +100,7 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
       joinedRoom: ({ roomId, playerId }: { roomId: string; playerId: string }) => {
         setRoomId(roomId);
         setPlayerId(playerId);
-        toast.success(`Đã tham gia phòng ${roomId}!`);
+        // toast.success(`Đã tham gia phòng ${roomId}!`);
       },
       setGames: ({ gameStates, playerStates, playersStatus }: any) => {
         const players: Player[] = playersStatus.map((pl: any) => {
@@ -117,8 +118,9 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
         setPlayerStates(normalizePlayerStates(playerStates));
       },
       canStartGame: ({ canStart, message }: { canStart: boolean; message: string }) => {
+        console.log("canStartGame triggered:", message); // Log để kiểm tra sự kiện
         setGameStarted(canStart);
-        toast.success(message);
+        toast.success(message, { toastId: "canStartGame" }); // Sử dụng toastId để tránh lặp
       },
       sendReplayGame: ({ message }: { message: string }) => {
         setDialogMessage(message);
@@ -230,22 +232,19 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
   }, [playerId, normalizePlayerStates]);
 
 
-  useEffect(() => {
-    if (id) {
-      setRoomId(id);
-      joinRoom(id);
 
-    }
-  }, [id]);
 
-  const joinRoom = useCallback((id) => {
-    if (roomId.trim()) {
-      socket.emit("joinRoom", id || roomId, playerName);
-    } else {
-      toast.error("Kiểm tra lại tên phòng!");
-    }
-    onInRoom();
-  }, [roomId, playerName]);
+  const joinRoom = useCallback(
+    (roomIdToJoin: string) => {
+      if (roomIdToJoin.trim()) {
+        socket.emit("joinRoom", roomIdToJoin, playerName);
+        onInRoom();
+      } else {
+        toast.error("Kiểm tra lại tên phòng!");
+      }
+    },
+    [playerName, socket, onInRoom]
+  );
 
   const createRoom = useCallback(() => {
     const newRoomId = uuidv4();
@@ -394,7 +393,7 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
             className="px-2 py-1 border border-gray-400 bg-white text-sm flex-grow rounded-sm"
           />
           <button
-            onClick={joinRoom}
+            onClick={() => joinRoom(roomId)}
             className="px-3 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
           >
             Vào phòng
@@ -583,9 +582,6 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ id, socket, onInRoom, onLeaveRoom }) =
       >
         <p className="text-sm text-gray-800">{dialogMessage}</p>
       </CustomDialog>
-      <ToastContainer
-        toastClassName="bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 text-gray-800 text-sm rounded-sm"
-      />
     </div>
   );
 };

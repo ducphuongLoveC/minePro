@@ -4,17 +4,21 @@ import PvpPlay from "./PvpPlay";
 import RoomList from "../Components/RoomList";
 
 
-const socket = io("http://localhost:3000");
+const socket = io("http://localhost:3000/pvp");
 
-function PVP() {
-    const [rooms, setRooms] = useState([
-    ]);
+interface Room {
+    id: string;
+    name: string;
+    currentPlayers: number;
+    maxPlayers: number
+}
 
-    const [isInRoom, setIsInroom] = useState(false);
+const PVP: React.FC = () => {
+    const [rooms, setRooms] = useState<Room[]>([]);
+    const [isInRoom, setIsInRoom] = useState(false);
 
     useEffect(() => {
-        socket.on("roomList", (updatedRooms) => {
-            console.log(rooms);
+        const handleRoomList = (updatedRooms: any[]) => {
             setRooms(
                 updatedRooms.map((room) => ({
                     id: room.id,
@@ -23,36 +27,35 @@ function PVP() {
                     maxPlayers: room.maxPlayers,
                 }))
             );
-        });
+        };
+
+        socket.on("roomList", handleRoomList);
+
+        socket.emit("emitRoomList");
 
         return () => {
-            socket.off("roomList");
+            socket.off("roomList", handleRoomList);
         };
     }, []);
-
-    useEffect(() => {
-
-        if (socket) {
-            socket.emit('emitRoomList')
-        }
-    }, [])
-
+    
     return (
         <div className="flex">
-            {
-                !isInRoom && <RoomList
+            {!isInRoom && (
+                <RoomList
                     rooms={rooms}
                     onJoinRoom={(id) => {
-                        console.log(id);
                         socket.emit("joinRoom", id);
-                        setIsInroom(true)
+                        setIsInRoom(true);
                     }}
                 />
-            }
-
-            <PvpPlay socket={socket} onInRoom={() => setIsInroom(true)} onLeaveRoom={() => setIsInroom(false)} />
+            )}
+            <PvpPlay
+                socket={socket}
+                onInRoom={() => setIsInRoom(true)}
+                onLeaveRoom={() => setIsInRoom(false)}
+            />
         </div>
     );
-}
+};
 
 export default PVP;
