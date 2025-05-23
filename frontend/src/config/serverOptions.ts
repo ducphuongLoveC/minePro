@@ -5,7 +5,7 @@ export type serverOptionsProp = {
 export const serverOptionsConfig: serverOptionsProp[] = [
     {
         title: 'Máy chủ local',
-        path: 'http://192.168.0.191:3000',
+        path: 'http://192.168.0.191:5173',
     },
     {
         title: 'Máy chủ ngrok',
@@ -16,4 +16,3 @@ export const serverOptionsConfig: serverOptionsProp[] = [
         path: 'https://minesweeper-be.onrender.com',
     }
 ]
-                                                    
