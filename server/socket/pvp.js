@@ -188,7 +188,7 @@
 //         });
 
 //         if (canStart) {
-            
+
 //             io.to(roomId).emit('canStartGame', { canStart: true, message: 'Game bắt đầu!' });
 //         } else {
 //             socket.emit('playerNotReady', { message: 'Người chơi chưa sẵn sàng!' });
@@ -246,7 +246,7 @@
 
 //         const result = currentGamePlayer.chording(index, flags);
 
-        
+
 //         if (result.success) {
 //             result.openedIndices.forEach(i => playerState.revealedCells.add(i));
 //         }
@@ -431,6 +431,7 @@
 
 
 
+
 const Minesweeper = require('../core/Minesweeper.js');
 
 const rooms = new Map(); // Using Map for better performance with frequent additions/deletions
@@ -447,7 +448,7 @@ function pvp(io, socket) {
         // Optimized player removal
         const playerIndex = room.players.indexOf(playerId);
         if (playerIndex === -1) return;
-        
+
         room.players.splice(playerIndex, 1);
         delete room.games[playerId];
         delete room.playerStates[playerId];
@@ -459,7 +460,7 @@ function pvp(io, socket) {
         if (room.players.length === 1) {
             const remainingPlayerId = room.players[0];
             const remainingPlayerStatus = room.playersStatus.find(entry => entry[remainingPlayerId]);
-            
+
             if (remainingPlayerStatus) {
                 remainingPlayerStatus[remainingPlayerId].isHost = true;
                 remainingPlayerStatus[remainingPlayerId].isReady = true;
@@ -485,7 +486,7 @@ function pvp(io, socket) {
         if (room.players.length === 1) {
             const remainingId = room.players[0];
             emitData.gameStates = { [remainingId]: room.games[remainingId].getState() };
-            emitData.playerStates = { 
+            emitData.playerStates = {
                 [remainingId]: {
                     revealedCells: [],
                     flags: []
@@ -502,7 +503,7 @@ function pvp(io, socket) {
             console.log(`Phòng ${roomId} đã được xóa`);
             return;
         }
-
+        emitRoomList();
         console.log(`Player ${playerId} removed from room ${roomId}`);
     }
 
@@ -513,7 +514,7 @@ function pvp(io, socket) {
         // Optimized object creation
         const gameStates = {};
         const playerStates = {};
-        
+
         for (const id in room.games) {
             gameStates[id] = room.games[id].getState();
             playerStates[id] = {
@@ -531,14 +532,14 @@ function pvp(io, socket) {
 
     function emitRoomList() {
         const roomList = [];
-        
+
         rooms.forEach((room, roomId) => {
             const firstPlayer = room.players[0];
             const firstPlayerStatus = room.playersStatus.find(entry => entry[firstPlayer])?.[firstPlayer];
-            
+
             roomList.push({
                 id: roomId,
-                name: firstPlayerStatus?.playerName 
+                name: firstPlayerStatus?.playerName
                     ? `Phòng của ${firstPlayerStatus.playerName}`
                     : `Phòng ${roomId}`,
                 currentPlayers: room.players.length,
@@ -600,7 +601,7 @@ function pvp(io, socket) {
 
         socket.join(roomId);
         socket.emit('joinedRoom', { roomId, playerId: socket.id });
-        
+
         AllEmitSetGames(roomId);
         emitRoomList();
     });
@@ -663,7 +664,7 @@ function pvp(io, socket) {
         // Prepare data for emit
         const gameStates = {};
         const emitPlayerStates = {};
-        
+
         for (const id in games) {
             gameStates[id] = games[id].getState();
             emitPlayerStates[id] = {
@@ -699,7 +700,7 @@ function pvp(io, socket) {
         if (result.isMine || result.isWin) {
             const winner = result.isMine ? opponentId : socket.id;
             const loser = result.isMine ? socket.id : null;
-            
+
             const winnerName = room.playersStatus.find(entry => entry[winner])?.[winner]?.playerName;
             const loserName = room.playersStatus.find(entry => entry[socket.id])?.[socket.id]?.playerName;
 
@@ -711,8 +712,8 @@ function pvp(io, socket) {
             io.to(roomId).emit('gameOver', {
                 winner,
                 loser,
-                message: winner 
-                    ? `${winnerName} thắng! ${loserName} chạm vào bom!` 
+                message: winner
+                    ? `${winnerName} thắng! ${loserName} chạm vào bom!`
                     : `${loserName} đã thắng game!`
             });
         }
@@ -750,11 +751,11 @@ function pvp(io, socket) {
         handleGameAction(roomId, 'chord', index, (game, state, idx) => {
             const flags = toArray(state.flags);
             const result = game.chording(idx, flags);
-            
+
             if (result.success) {
                 result.openedIndices.forEach(i => state.revealedCells.add(i));
             }
-            
+
             return result;
         });
     });
@@ -762,15 +763,15 @@ function pvp(io, socket) {
     socket.on('openCell', ({ roomId, index }) => {
         handleGameAction(roomId, 'open', index, (game, state, idx) => {
             if (state.flags.has(idx)) return null;
-            
+
             const result = game.openCell(idx);
             if (!result) return null;
-            
+
             state.revealedCells.add(idx);
             if (result.openedIndices?.length > 0) {
                 result.openedIndices.forEach(i => state.revealedCells.add(i));
             }
-            
+
             return result;
         });
     });
@@ -796,7 +797,6 @@ function pvp(io, socket) {
             action: { type: 'flag', index, playerId: socket.id }
         };
 
-        // Add game states and player states
         for (const id in room.games) {
             updateData.gameStates[id] = room.games[id].getState();
             updateData.playerStates[id] = {

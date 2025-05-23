@@ -83,12 +83,24 @@ const io = socketIo(server, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    compression: true // Bật nén để giảm kích thước dữ liệu
+    compression: true
 });
 
 app.use(express.static('public', {
-    maxAge: '1d' // Cache tài nguyên tĩnh trong 1 ngày
+    maxAge: '1d'
 }));
+
+
+io.on('connection', (socket) => {
+    console.log('User connected to default namespace:', socket.id);
+    socket.on('ping', (data) => {
+        socket.emit('pong', { pingTime: data.pingTime });
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected from default namespace:', socket.id);
+    });
+});
 
 const singleNamespace = io.of('/single');
 singleNamespace.on('connection', (socket) => {

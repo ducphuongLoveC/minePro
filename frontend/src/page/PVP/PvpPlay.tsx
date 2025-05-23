@@ -591,7 +591,7 @@
 
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "react-toastify";
 import { FaCopy, FaSignOutAlt, FaUser, FaCrown, FaSkull } from "react-icons/fa";
 import CustomDialog from "../../components/CustomDialog";
 import { BeatLoader } from "react-spinners";
@@ -599,7 +599,7 @@ import { v4 as uuidv4 } from "uuid";
 import MinesweeperModeSelector from "../Components/MinesweeperModeSelector";
 
 // Sử dụng Map thay vì object cho hiệu suất tốt hơn
-export const numberColorClasses = new Map([
+const numberColorClasses = new Map([
   [1, "text-blue-700"],
   [2, "text-green-700"],
   [3, "text-red-700"],
@@ -697,24 +697,24 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
     const handleUpdateState = ({ gameStates, playerStates, action }: any) => {
       setGameStates(gameStates);
       setPlayerStates(normalizePlayerStates(playerStates));
-      
+
       if (action.result?.isMine || action.result?.isWin) {
         const isCurrentPlayer = action.playerId === playerId;
         const message = action.result?.isMine
-          ? isCurrentPlayer 
-            ? "Bạn đã chạm vào mìn! Thua cuộc!" 
+          ? isCurrentPlayer
+            ? "Bạn đã chạm vào mìn! Thua cuộc!"
             : "Đối thủ chạm mìn! Bạn thắng!"
-          : isCurrentPlayer 
-            ? "Bạn đã thắng!" 
+          : isCurrentPlayer
+            ? "Bạn đã thắng!"
             : "Đối thủ đã thắng!";
-            
+
         setDialogMessage(message);
         setOpenDialog((pre) => ({ ...pre, end: true }));
-        
+
         setPlayers((prev) =>
           prev.map((p) =>
-            p.id === action.playerId 
-              ? { ...p, status: action.result?.isMine ? "lost" : "won" } 
+            p.id === action.playerId
+              ? { ...p, status: action.result?.isMine ? "lost" : "won" }
               : { ...p, status: action.result?.isMine ? "won" : "lost" }
           )
         );
@@ -890,7 +890,7 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
       const currentPlayerState = playerStates.get(playerId);
       const opponentId = Array.from(playerStates.keys()).find((id) => id !== playerId);
       const opponentState = opponentId ? playerStates.get(opponentId) : null;
-      
+
       const currentRevealed = currentPlayerState?.revealedCells || new Set();
       const currentFlags = currentPlayerState?.flags || new Set();
       const opponentRevealed = opponentState?.revealedCells || new Set();
@@ -1043,8 +1043,8 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
             </div>
           </div>
           <div className="text-xs text-gray-500">
-            {player.status === "playing" ? "Đang chơi" : 
-             player.status === "won" ? "Chiến thắng!" : "Thua cuộc"}
+            {player.status === "playing" ? "Đang chơi" :
+              player.status === "won" ? "Chiến thắng!" : "Thua cuộc"}
           </div>
         </div>
       </div>

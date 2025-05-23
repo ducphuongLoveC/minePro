@@ -1,13 +1,27 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { numberColorClasses } from "./PVP/PvpPlay";
+
 import MinesweeperModeSelector from "./Components/MinesweeperModeSelector";
 import { toast } from "react-toastify";
 import { io } from "socket.io-client";
 import CustomDialog from "../components/CustomDialog";
+import { useAppSelector } from "../hooks/useRedux";
 
-const getNumberClass = (cell: any, isRevealed: boolean): string => {
-    if (!isRevealed || !cell || typeof cell.count !== "number") return "";
-    return numberColorClasses[cell.count] || "";
+
+export const numberColorClasses = new Map([
+    [1, "text-blue-700"],
+    [2, "text-green-700"],
+    [3, "text-red-700"],
+    [4, "text-purple-700"],
+    [5, "text-maroon-700"],
+    [6, "text-teal-700"],
+    [7, "text-black"],
+    [8, "text-gray-700"],
+]);
+
+
+const getNumberClass = (count: any, isRevealed: boolean): string => {
+    if (!isRevealed || !count || typeof count !== "number") return "";
+    return numberColorClasses.get(count) || "";
 };
 
 function SinglePlay() {
@@ -23,8 +37,12 @@ function SinglePlay() {
     const [endedGame, setEndedGame] = useState(false);
     const [socket, setSocket] = useState<any>(null);
 
+
+    const { selectedServer } = useAppSelector((state) => state.serverOptions);
+
+
     useEffect(() => {
-        const newSocket = io(`${import.meta.env.VITE_URL_SERVER}/single`, {
+        const newSocket = io(`${selectedServer}/single`, {
             transports: ["websocket"],
             reconnectionAttempts: 3,
             reconnectionDelay: 1000,
@@ -37,7 +55,7 @@ function SinglePlay() {
         return () => {
             newSocket.disconnect();
         };
-    }, []);
+    }, [selectedServer]);
 
     const normalizePlayerState = useCallback((state: any) => {
         return {
@@ -138,7 +156,7 @@ function SinglePlay() {
             content = cell.isMine ? "💣" : cell.count > 0 ? cell.count : "";
 
         const cellClasses = [
-            getNumberClass(cell, isRevealed),
+            getNumberClass(cell.count, isRevealed),
             "flex items-center justify-center w-6 h-6 text-sm font-bold",
             isRevealed
                 ? "bg-gray-200"
