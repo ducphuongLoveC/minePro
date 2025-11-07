@@ -15,11 +15,9 @@ const serverOptionsSlice = createSlice({
     name: 'serverOptions',
     initialState,
     reducers: {
-
         addServer: (state, action: PayloadAction<serverOptionsProp>) => {
             state.server.push(action.payload);
         },
-
         selectServer: (state, action: PayloadAction<string>) => {
             state.selectedServer = action.payload;
         },

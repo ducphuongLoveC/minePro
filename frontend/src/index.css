@@ -2,10 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
-
+/* Global Styles */
 body {
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom Utilities */
+@layer utilities {
+    /* Smooth scrolling */
+    .scroll-smooth {
+        scroll-behavior: smooth;
+    }
+    
+    /* Hide scrollbar but keep functionality */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    
+    /* Better touch target for mobile */
+    .touch-target {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    
+    /* Prevent text selection during game */
+    .no-select {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+    
+    /* GPU acceleration for animations */
+    .gpu-accelerated {
+        transform: translateZ(0);
+        will-change: transform;
+    }
+}
+
+/* Custom Components */
+@layer components {
+    /* Windows 95 style button active state */
+    .win95-button-active {
+        box-shadow: inset -1px -1px 0px 0px rgba(255,255,255,0.5),
+                    inset 1px 1px 0px 0px rgba(0,0,0,0.5);
+    }
+    
+    /* Retro Windows border style */
+    .retro-border {
+        border-style: solid;
+        border-width: 2px;
+        border-top-color: white;
+        border-left-color: white;
+        border-bottom-color: rgb(128, 128, 128);
+        border-right-color: rgb(128, 128, 128);
+    }
+    
+    /* Inset border (for pressed buttons) */
+    .retro-border-inset {
+        border-style: solid;
+        border-width: 2px;
+        border-top-color: rgb(128, 128, 128);
+        border-left-color: rgb(128, 128, 128);
+        border-bottom-color: white;
+        border-right-color: white;
+    }
+}
+
+/* Animations */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.shimmer {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(
+        to right,
+        #f6f7f8 0%,
+        #edeef1 20%,
+        #f6f7f8 40%,
+        #f6f7f8 100%
+    );
+    background-size: 1000px 100%;
+}
+
+/* Focus styles for accessibility */
+@layer base {
+    *:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+    
+    button:focus-visible,
+    a:focus-visible {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
 }

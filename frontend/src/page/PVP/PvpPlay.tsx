@@ -1,595 +1,3 @@
-// import React, { useEffect, useState, useCallback } from "react";
-
-// import { ToastContainer, toast } from "react-toastify";
-// import { FaCopy, FaSignOutAlt, FaUser, FaCrown, FaSkull } from "react-icons/fa";
-// import CustomDialog from "../../components/CustomDialog";
-// import { BeatLoader } from "react-spinners";
-// import { v4 as uuidv4 } from "uuid";
-// import MinesweeperModeSelector from "../Components/MinesweeperModeSelector";
-
-// export const numberColorClasses = {
-//   1: "text-blue-700",
-//   2: "text-green-700",
-//   3: "text-red-700",
-//   4: "text-purple-700",
-//   5: "text-maroon-700",
-//   6: "text-teal-700",
-//   7: "text-black",
-//   8: "text-gray-700",
-// };
-
-// export function isNumber(value: any): boolean {
-//   return typeof value === "number" && !isNaN(value);
-// }
-
-// interface PlayerState {
-//   revealedCells: Set<number>;
-//   flags: Set<number>;
-// }
-
-// interface Player {
-//   id: string;
-//   name: string;
-//   status: "playing" | "won" | "lost";
-//   isReady: boolean;
-//   isHost: boolean;
-// }
-
-// interface DialogProp {
-//   end: boolean;
-//   replay: boolean;
-// }
-
-// interface PvpPlayProp {
-//   socket: any
-//   onInRoom: () => void
-//   onLeaveRoom: () => void
-// }
-
-// const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
-//   const [roomId, setRoomId] = useState<string>('');
-//   const [playerId, setPlayerId] = useState<string | null>(null);
-//   const [playerName, setPlayerName] = useState<string>("");
-//   const [gameStates, setGameStates] = useState<any | null>(null);
-//   const [playerStates, setPlayerStates] = useState<{ [key: string]: PlayerState }>({});
-//   const [players, setPlayers] = useState<Player[]>([]);
-//   const [isConnected, setIsConnected] = useState<boolean>(socket.connected);
-//   const [openDialog, setOpenDialog] = useState<DialogProp>({ end: false, replay: false });
-//   const [dialogMessage, setDialogMessage] = useState<string>("");
-//   const [configMode, setConfigMode] = useState<any>({});
-//   const [gameStarted, setGameStarted] = useState(false);
-//   const [endedGame, setEndedGame] = useState(false);
-
-//   const normalizePlayerStates = useCallback(
-//     (states: { [key: string]: { revealedCells: number[]; flags: number[] } }) => {
-//       const normalized: { [key: string]: PlayerState } = {};
-//       for (const [id, state] of Object.entries(states)) {
-//         normalized[id] = {
-//           revealedCells: new Set(state.revealedCells),
-//           flags: new Set(state.flags),
-//         };
-//       }
-//       return normalized;
-//     },
-//     []
-//   );
-
-//   const checkGameOver = () => {
-//     if (!gameStates) return false;
-//     return Object.values(gameStates).some((game: any) => game.gameOver);
-//   };
-
-//   useEffect(() => {
-
-//     console.log("Registering socket events");
-//     const handlers = {
-//       // connect: () => {
-//       //   setIsConnected(true);
-//       //   toast.success("Đã kết nối đến server!");
-//       // },
-//       // disconnect: () => {
-//       //   setIsConnected(false);
-//       //   toast.error("Mất kết nối với server!");
-//       // },
-//       roomCreated: ({ roomId }: { roomId: string }) => {
-//         // toast.success(`Phòng ${roomId} đã được tạo!`);
-//       },
-//       error: ({ message }: { message: string }) => {
-//         toast.error(message);
-//       },
-//       joinedRoom: ({ roomId, playerId }: { roomId: string; playerId: string }) => {
-//         setRoomId(roomId);
-//         setPlayerId(playerId);
-//         // toast.success(`Đã tham gia phòng ${roomId}!`);
-//       },
-//       setGames: ({ gameStates, playerStates, playersStatus }: any) => {
-//         const players: Player[] = playersStatus.map((pl: any) => {
-//           const [id, player]: any = Object.entries(pl)[0];
-//           return {
-//             id,
-//             name: player.playerName,
-//             status: "playing",
-//             isReady: player.isReady,
-//             isHost: player.isHost
-//           };
-//         });
-//         setGameStates(gameStates);
-//         setPlayers(players);
-//         setPlayerStates(normalizePlayerStates(playerStates));
-//       },
-//       canStartGame: ({ canStart, message }: { canStart: boolean; message: string }) => {
-//         console.log("canStartGame triggered:", message); // Log để kiểm tra sự kiện
-//         setGameStarted(canStart);
-//         toast.success(message, { toastId: "canStartGame" }); // Sử dụng toastId để tránh lặp
-//       },
-//       sendReplayGame: ({ message }: { message: string }) => {
-//         setDialogMessage(message);
-//         setOpenDialog((pre) => ({ ...pre, replay: true }));
-//       },
-//       replayConfirmed: ({ gameStates, playerStates, playersStatus }: any) => {
-//         setGameStates(gameStates);
-//         setPlayerStates(normalizePlayerStates(playerStates));
-//         setPlayers(
-//           playersStatus.map((pl: any) => {
-//             const [id, player]: any = Object.entries(pl)[0];
-//             return {
-//               id,
-//               name: player.playerName,
-//               status: "playing",
-//               isReady: player.isReady,
-//               isHost: player.isHost
-//             };
-//           })
-//         );
-//         setGameStarted(true);
-//         setEndedGame(false);
-//         setOpenDialog({ end: false, replay: false });
-//         toast.success("Trò chơi đã được bắt đầu lại!");
-//       },
-//       replayDeclined: ({ message }: { message: string }) => {
-//         toast.info(message || "Một người chơi đã từ chối chơi lại.");
-//         setOpenDialog((pre) => ({ ...pre, replay: false }));
-//       },
-//       playerNotReady: ({ message }: { message: string }) => {
-//         toast.info(message);
-//       },
-//       updateState: ({ gameStates, playerStates, action }: any) => {
-//         setGameStates(gameStates);
-//         setPlayerStates(normalizePlayerStates(playerStates));
-//         if (action.result?.isMine) {
-//           const message =
-//             action.playerId === playerId
-//               ? "Bạn đã chạm vào mìn! Thua cuộc!"
-//               : "Đối thủ chạm mìn! Bạn thắng!";
-//           setDialogMessage(message);
-//           setOpenDialog((pre) => ({ ...pre, end: true }));
-//           setPlayers((prev) =>
-//             prev.map((p) =>
-//               p.id === action.playerId ? { ...p, status: "lost" } : { ...p, status: "won" }
-//             )
-//           );
-//         } else if (action.result?.isWin) {
-//           const message =
-//             action.playerId === playerId ? "Bạn đã thắng!" : "Đối thủ đã thắng!";
-//           setDialogMessage(message);
-//           setOpenDialog((pre) => ({ ...pre, end: true }));
-//           setPlayers((prev) =>
-//             prev.map((p) =>
-//               p.id === action.playerId ? { ...p, status: "won" } : { ...p, status: "lost" }
-//             )
-//           );
-//         }
-//       },
-//       gameOver: ({ winner, message }: any) => {
-//         setDialogMessage(message || (winner === playerId ? "Bạn đã thắng!" : "Bạn đã thua!"));
-//         setOpenDialog((pre) => ({ ...pre, end: true }));
-//         setGameStarted(false);
-//         setEndedGame(true);
-//       },
-//       roomFull: ({ message }: { message: string }) => {
-//         toast.error(message);
-//       },
-//       playerLeft: ({ playersStatus, gameStates, playerStates }: any) => {
-//         toast.info("Đối thủ đã rời phòng!");
-//         const updatedPlayers: Player[] = playersStatus.map((pl: any) => {
-//           const [id, player]: any = Object.entries(pl)[0];
-//           return {
-//             id,
-//             name: player.playerName,
-//             status: "playing",
-//             isReady: player.isReady,
-//             isHost: player.isHost
-//           };
-//         });
-//         setPlayers(updatedPlayers);
-//         setGameStates(gameStates);
-//         setPlayerStates(normalizePlayerStates(playerStates));
-//         setGameStarted(false);
-//         setEndedGame(false);
-//       },
-//       returnToLobby: ({ message }: { message: string }) => {
-//         toast.info(message);
-//         setGameStates(null);
-//         setPlayerStates({});
-//         setPlayers([]);
-//         setRoomId("");
-//         setPlayerId(null);
-//         setGameStarted(false);
-//         setEndedGame(false);
-//         setOpenDialog({ end: false, replay: false });
-//       }
-//     };
-
-//     Object.entries(handlers).forEach(([event, handler]) => {
-//       socket.on(event, handler);
-//     });
-
-//     return () => {
-//       Object.entries(handlers).forEach(([event, handler]) => {
-//         socket.off(event, handler);
-//       });
-//     };
-//   }, [playerId, normalizePlayerStates]);
-
-
-
-
-//   const joinRoom = useCallback(
-//     (roomIdToJoin: string) => {
-//       if (roomIdToJoin.trim()) {
-//         socket.emit("joinRoom", roomIdToJoin, playerName);
-//         onInRoom();
-//       } else {
-//         toast.error("Kiểm tra lại tên phòng!");
-//       }
-//     },
-//     [playerName, socket, onInRoom]
-//   );
-
-//   const createRoom = useCallback(() => {
-//     const newRoomId = uuidv4();
-//     setRoomId(newRoomId);
-//     socket.emit("joinRoom", newRoomId, playerName, configMode);
-//     onInRoom();
-//   }, [playerName, configMode]);
-
-//   const startGame = useCallback(() => {
-//     socket.emit("startGame", roomId);
-//   }, [roomId]);
-
-//   const replayGame = useCallback(() => {
-//     toast.success('Gửi lời mời thành công!')
-//     socket.emit("replayGame", roomId);
-//   }, [roomId]);
-
-//   const toggleReadyGame = useCallback(() => {
-//     socket.emit("toggleReadyGame", roomId);
-//   }, [roomId]);
-
-//   const leaveRoom = useCallback(() => {
-//     socket.emit("leaveRoom", roomId);
-//     onLeaveRoom();
-//   }, [roomId]);
-
-//   const copyRoomId = useCallback(() => {
-//     navigator.clipboard.writeText(roomId);
-//     toast.success("Đã sao chép ID phòng!");
-//   }, [roomId]);
-
-//   const openCell = useCallback(
-//     (index: number) => {
-//       if (gameStates && !checkGameOver()) {
-//         socket.emit("openCell", { roomId, index });
-//       }
-//     },
-//     [gameStates, roomId]
-//   );
-
-//   const chording = useCallback(
-//     (index: number) => {
-//       if (gameStates && !checkGameOver()) {
-//         socket.emit("chording", { roomId, index });
-//       }
-//     },
-//     [gameStates, roomId]
-//   );
-
-//   const toggleFlag = useCallback(
-//     (index: number, e: React.MouseEvent) => {
-//       e.preventDefault();
-//       if (gameStates && !checkGameOver()) {
-//         socket.emit("toggleFlag", { roomId, index });
-//       }
-//     },
-//     [gameStates, roomId]
-//   );
-
-//   const renderBoard = useCallback(
-//     (isOpponent: boolean, game: any) => {
-//       if (!gameStates || !playerStates || !playerId) return null;
-
-//       const { ratioX, ratioY, cells } = game;
-//       const currentPlayerState = playerStates[playerId];
-//       const opponentId = Object.keys(playerStates).find((id) => id !== playerId);
-//       const opponentState = opponentId ? playerStates[opponentId] : null;
-//       const currentRevealed = currentPlayerState?.revealedCells || new Set();
-//       const currentFlags = currentPlayerState?.flags || new Set();
-//       const opponentRevealed = opponentState?.revealedCells || new Set();
-//       const opponentFlags = opponentState?.flags || new Set();
-
-//       return (
-//         <div
-//           className="grid gap-[1px] bg-gray-300 p-1 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm"
-//           style={{
-//             gridTemplateColumns: `repeat(${ratioY}, 24px)`,
-//             gridTemplateRows: `repeat(${ratioX}, 24px)`,
-//           }}
-//         >
-//           {cells.map((cell: any, index: number) => {
-//             const isRevealed = isOpponent ? opponentRevealed.has(index) : currentRevealed.has(index);
-//             const isFlagged = isOpponent ? opponentFlags.has(index) : currentFlags.has(index);
-//             const canInteract = !isOpponent && !checkGameOver() && !isRevealed;
-//             const interactive = canInteract && gameStarted;
-
-//             const canChording = currentRevealed.has(index) && !isOpponent;
-
-//             let content = "";
-//             if (isFlagged) content = "🚩";
-//             else if (isRevealed)
-//               content = cell.isMine ? "💣" : cell.count > 0 ? cell.count : "";
-//             else if (cell.isMarkHint) content = "x";
-
-//             const cellClasses = [
-//               isNumber(cell?.count) ? numberColorClasses[cell.count] : "",
-//               "flex items-center justify-center w-6 h-6 text-sm font-bold",
-//               isRevealed
-//                 ? "bg-gray-200"
-//                 : "bg-gray-300 border-t-2 border-l-2 border-b-2 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500",
-//               interactive ? "cursor-pointer hover:bg-gray-400" : "cursor-default",
-//             ].join(" ");
-
-//             return (
-//               <div
-//                 key={index}
-//                 className={cellClasses}
-//                 onClick={() => {
-//                   if (interactive) {
-//                     openCell(index);
-//                   } else if (canChording) {
-//                     chording(index);
-//                   }
-//                 }}
-//                 onContextMenu={canInteract ? (e) => toggleFlag(index, e) : undefined}
-//               >
-//                 {content}
-//               </div>
-//             );
-//           })}
-//         </div>
-//       );
-//     },
-//     [gameStates, playerStates, playerId, gameStarted, openCell, toggleFlag]
-//   );
-
-//   const renderPreGameForm = () => {
-//     if (roomId && gameStates) return null;
-
-//     return (
-//       <div className="mb-4 p-3 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm">
-//         <MinesweeperModeSelector onModeChange={(data) => setConfigMode(data)} />
-//         <input
-//           type="text"
-//           placeholder="Tên của bạn"
-//           value={playerName}
-//           onChange={(e) => setPlayerName(e.target.value)}
-//           className="px-2 py-1 border border-gray-400 bg-white text-sm w-full mb-2 rounded-sm"
-//         />
-//         <div className="flex gap-2">
-//           <input
-//             type="text"
-//             value={roomId}
-//             onChange={(e) => setRoomId(e.target.value)}
-//             placeholder="Nhập Room ID"
-//             className="px-2 py-1 border border-gray-400 bg-white text-sm flex-grow rounded-sm"
-//           />
-//           <button
-//             onClick={() => joinRoom(roomId)}
-//             className="px-3 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
-//           >
-//             Vào phòng
-//           </button>
-//           <button
-//             onClick={createRoom}
-//             className="px-3 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
-//           >
-//             Tạo phòng
-//           </button>
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   const renderGameLobby = () => {
-//     if (!roomId || !gameStates) return null;
-
-//     return (
-//       <div className="mb-4 p-3 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm w-full">
-//         <div className="flex justify-between items-center mb-2">
-//           <h3 className="font-bold text-sm text-gray-800">
-//             Phòng: <span className="ml-1 bg-gray-300 text-[#337ab7] px-2 py-1 text-xs rounded-sm">{roomId}</span>
-//           </h3>
-//           <div className="flex gap-2 items-center">
-//             {renderLobbyControls()}
-//             <button
-//               onClick={copyRoomId}
-//               className="p-1 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-[#337ab7] rounded-sm"
-//               title="Sao chép ID phòng"
-//             >
-//               <FaCopy size={12} />
-//             </button>
-//             <button
-//               onClick={leaveRoom}
-//               className="p-1 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-[#ff0000] rounded-sm"
-//               title="Rời khỏi phòng"
-//             >
-//               <FaSignOutAlt size={12} />
-//             </button>
-//           </div>
-//         </div>
-//         <div className="space-y-1">{players.map(renderPlayerInfo)}</div>
-//       </div>
-//     );
-//   };
-
-//   const renderLobbyControls = () => {
-//     if (gameStarted) return null;
-
-//     const currentPlayer = players.find((p) => p.id === playerId);
-//     if (currentPlayer?.isHost) {
-//       if (endedGame) {
-//         return (
-//           <button
-//             onClick={replayGame}
-//             className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
-//           >
-//             Chơi lại
-//           </button>
-//         );
-//       }
-//       return Object.keys(gameStates).length === 2 ? (
-//         <button
-//           onClick={startGame}
-//           className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
-//         >
-//           Bắt đầu game
-//         </button>
-//       ) : (
-//         <BeatLoader size={8} color="#6B7280" />
-//       );
-//     }
-
-//     return (
-//       <button
-//         onClick={toggleReadyGame}
-//         className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
-//       >
-//         {currentPlayer?.isReady ? "Hủy sẵn sàng" : "Sẵn sàng"}
-//       </button>
-//     );
-//   };
-
-//   const renderPlayerInfo = (player: Player) => {
-//     const isCurrentPlayer = playerId === player.id;
-
-//     return (
-//       <div
-//         key={player.id}
-//         className={`flex items-center p-2 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${isCurrentPlayer ? "bg-gray-200" : ""}`}
-//       >
-//         <div
-//           className={`flex items-center justify-center w-6 h-6 mr-2 bg-gray-400 text-white text-xs rounded-sm`}
-//         >
-//           <FaUser />
-//         </div>
-//         <div className="flex-1">
-//           <div className="flex items-center">
-//             <span className="font-medium text-sm text-gray-800">
-//               {player.name} {isCurrentPlayer && "(Bạn)"} {player.isHost && "(Host)"}
-//             </span>
-//             {player.status === "won" && <FaCrown className="ml-1 text-yellow-500" size={12} />}
-//             {player.status === "lost" && <FaSkull className="ml-1 text-gray-500" size={12} />}
-//             <div
-//               className={`ml-1 inline-block px-1 py-0.5 text-xs rounded-sm ${player.isReady ? "bg-green-200 text-green-800" : "bg-gray-400 text-gray-200"}`}
-//             >
-//               {player.isReady ? "Sẵn sàng" : "Chưa sẵn sàng"}
-//             </div>
-//           </div>
-//           <div className="text-xs text-gray-500">{getPlayerStatusText(player.status)}</div>
-//         </div>
-//       </div>
-//     );
-//   };
-
-//   const getPlayerStatusText = (status: string) => {
-//     switch (status) {
-//       case "playing":
-//         return "Đang chơi";
-//       case "won":
-//         return "Chiến thắng!";
-//       case "lost":
-//         return "Thua cuộc";
-//       default:
-//         return "";
-//     }
-//   };
-
-//   const renderGameBoards = () => {
-//     if (!gameStates || Object.keys(gameStates).length === 0) return null;
-
-//     return (
-//       <div className="flex gap-4">
-//         {Object.entries(gameStates).map(([pId, game]) => (
-//           <div key={pId} className="flex flex-col">
-//             <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center">
-//               {players.find((p) => p.id === pId)?.name}
-//               <span className={`ml-1 text-xs px-2 py-1 bg-gray-400 text-white rounded-sm`}>
-//                 {pId === playerId ? "Bạn" : "Đối thủ"}
-//               </span>
-//             </h3>
-//             {renderBoard(pId !== playerId, game)}
-//           </div>
-//         ))}
-//       </div>
-//     );
-//   };
-
-//   return (
-//     <div className="p-4 bg-gray-200 font-sans">
-//       <header className="w-full max-w-[800px]">
-//         {renderPreGameForm()}
-//         {renderGameLobby()}
-//       </header>
-//       <main className="mt-4">
-//         {renderGameBoards()}
-//       </main>
-//       <CustomDialog
-//         open={openDialog.end}
-//         title="Kết thúc"
-//         onClose={() => setOpenDialog((pre) => ({ ...pre, end: false }))}
-//       >
-//         <p className="text-sm text-gray-800">{dialogMessage}</p>
-//       </CustomDialog>
-//       <CustomDialog
-//         open={openDialog.replay}
-//         title="Mời chơi lại"
-//         onClose={() => setOpenDialog((pre) => ({ ...pre, replay: false }))}
-//         actions={[
-//           {
-//             label: "Chấp nhận",
-//             onClick: () => {
-//               socket.emit("confirmReplay", { roomId, playerId });
-//               setOpenDialog((pre) => ({ ...pre, replay: false }));
-//             },
-//           },
-//           {
-//             label: "Từ chối",
-//             onClick: () => {
-//               socket.emit("declineReplay", { roomId, playerId });
-//               setOpenDialog((pre) => ({ ...pre, replay: false }));
-//             },
-//           },
-//         ]}
-//       >
-//         <p className="text-sm text-gray-800">{dialogMessage}</p>
-//       </CustomDialog>
-//     </div>
-//   );
-// };
-
-// export default PvpPlay;
-
-
-
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "react-toastify";
 import { FaCopy, FaSignOutAlt, FaUser, FaCrown, FaSkull } from "react-icons/fa";
@@ -597,20 +5,8 @@ import CustomDialog from "../../components/CustomDialog";
 import { BeatLoader } from "react-spinners";
 import { v4 as uuidv4 } from "uuid";
 import MinesweeperModeSelector from "../Components/MinesweeperModeSelector";
-
-// Sử dụng Map thay vì object cho hiệu suất tốt hơn
-const numberColorClasses = new Map([
-  [1, "text-blue-700"],
-  [2, "text-green-700"],
-  [3, "text-red-700"],
-  [4, "text-purple-700"],
-  [5, "text-maroon-700"],
-  [6, "text-teal-700"],
-  [7, "text-black"],
-  [8, "text-gray-700"],
-]);
-
-const isNumber = (value: any): boolean => typeof value === "number" && !isNaN(value);
+import CellCpn from "../../components/CellCpn";
+import { Box } from "../../components/UI/Box";
 
 interface PlayerState {
   revealedCells: Set<number>;
@@ -640,7 +36,9 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
   const [roomId, setRoomId] = useState('');
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState<number>(2);
   const [gameStates, setGameStates] = useState<any | null>(null);
+
   const [playerStates, setPlayerStates] = useState<Map<string, PlayerState>>(new Map());
   const [players, setPlayers] = useState<Player[]>([]);
   const [openDialog, setOpenDialog] = useState<DialogProp>({ end: false, replay: false });
@@ -649,119 +47,156 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
   const [gameStarted, setGameStarted] = useState(false);
   const [endedGame, setEndedGame] = useState(false);
 
-  // Sử dụng useMemo để tránh tính toán lại các giá trị không thay đổi
   const currentPlayer = useMemo(() => players.find((p) => p.id === playerId), [players, playerId]);
 
-  const normalizePlayerStates = useCallback(
-    (states: { [key: string]: { revealedCells: number[]; flags: number[] } }) => {
-      const normalized = new Map<string, PlayerState>();
-      for (const [id, state] of Object.entries(states)) {
-        normalized.set(id, {
-          revealedCells: new Set(state.revealedCells),
-          flags: new Set(state.flags),
-        });
-      }
-      return normalized;
-    },
-    []
-  );
-
-  const checkGameOver = useCallback(() => {
-    if (!gameStates) return false;
-    return Object.values(gameStates).some((game: any) => game.gameOver);
-  }, [gameStates]);
-
-  // Tách các sự kiện socket thành các hàm riêng biệt để dễ quản lý
-  const setupSocketEvents = useCallback(() => {
-    const handleJoinedRoom = ({ roomId, playerId }: { roomId: string; playerId: string }) => {
-      setRoomId(roomId);
-      setPlayerId(playerId);
-    };
-
-    const handleSetGames = ({ gameStates, playerStates, playersStatus }: any) => {
-      const players: Player[] = playersStatus.map((pl: any) => {
-        const [id, player]: any = Object.entries(pl)[0];
-        return {
-          id,
-          name: player.playerName,
-          status: "playing",
-          isReady: player.isReady,
-          isHost: player.isHost
-        };
+  // Initialize player states from server data
+  const initializePlayerStates = useCallback((states: Record<string, any>) => {
+    const newStates = new Map<string, PlayerState>();
+    Object.entries(states).forEach(([id, state]) => {
+      newStates.set(id, {
+        revealedCells: new Set(state.revealedCells || []),
+        flags: new Set(state.flags || [])
       });
-      setGameStates(gameStates);
-      setPlayers(players);
-      setPlayerStates(normalizePlayerStates(playerStates));
-    };
+    });
+    return newStates;
+  }, []);
 
-    const handleUpdateState = ({ gameStates, playerStates, action }: any) => {
-      setGameStates(gameStates);
-      setPlayerStates(normalizePlayerStates(playerStates));
+  const handleSetGames = ({ gameStates, playersStatus }: any) => {
+    setGameStates(gameStates);
 
-      if (action.result?.isMine || action.result?.isWin) {
-        const isCurrentPlayer = action.playerId === playerId;
-        const message = action.result?.isMine
-          ? isCurrentPlayer
-            ? "Bạn đã chạm vào mìn! Thua cuộc!"
-            : "Đối thủ chạm mìn! Bạn thắng!"
-          : isCurrentPlayer
-            ? "Bạn đã thắng!"
-            : "Đối thủ đã thắng!";
+    handleSetPlayerStatus(playersStatus);
+  };
 
-        setDialogMessage(message);
-        setOpenDialog((pre) => ({ ...pre, end: true }));
+  const handlePlayerStatusUpdate = ({ playerId, isReady }: any) => {
+    setPlayers(prev => prev.map(p =>
+      p.id === playerId ? { ...p, isReady } : p
+    ));
+  };
 
-        setPlayers((prev) =>
-          prev.map((p) =>
-            p.id === action.playerId
-              ? { ...p, status: action.result?.isMine ? "lost" : "won" }
-              : { ...p, status: action.result?.isMine ? "won" : "lost" }
-          )
-        );
+  const handleFlagToggled = ({ playerId, index, hasFlag }: any) => {
+    setPlayerStates(prev => {
+      const newStates = new Map(prev);
+      const playerState = newStates.get(playerId) || {
+        revealedCells: new Set(),
+        flags: new Set()
+      };
+
+      if (hasFlag) {
+        playerState.flags.add(index);
+      } else {
+        playerState.flags.delete(index);
       }
-    };
+
+      newStates.set(playerId, playerState);
+      return newStates;
+    });
+  };
+
+  const handleDeltaUpdate = useCallback((data: any) => {
+
+    if (data.action) {
+      const { playerId, action } = data;
+
+      setPlayerStates(prev => {
+        const newStates = new Map(prev);
+        const playerState = newStates.get(playerId) || {
+          revealedCells: new Set(),
+          flags: new Set()
+        };
+
+        if (action.changes?.revealedCells) {
+          action.changes.revealedCells.forEach((idx: number) => {
+            playerState.revealedCells.add(idx);
+          });
+        }
+
+        newStates.set(playerId, playerState);
+        return newStates;
+      });
+
+      // if (action.result?.isMine || action.result?.isWin) {
+      //   const isCurrentPlayer = playerId === currentPlayer?.id;
+      //   const message = action.result?.isMine
+      //     ? isCurrentPlayer
+      //       ? "Bạn đã chạm vào mìn! Thua cuộc!"
+      //       : "Đối thủ chạm mìn! Bạn thắng!"
+      //     : isCurrentPlayer
+      //       ? "Bạn đã thắng!"
+      //       : "Đối thủ đã thắng!";
+
+      //   setDialogMessage(message);
+      //   setOpenDialog(prev => ({ ...prev, end: true }));
+      //   setEndedGame(true);
+      //   setGameStarted(false);
+
+      //   setPlayers(prev => prev.map(p => {
+      //     if (p.id === playerId) {
+      //       return { ...p, status: action.result.isMine ? "lost" : "won" };
+      //     }
+      //     return { ...p, status: action.result.isMine ? "won" : "lost" };
+      //   }));
+      // }
+    }
+  }, [currentPlayer]);
+
+  const handleSetPlayerStatus = useCallback((playersStatus) => {
+    console.log('check ýe')
+    const newPlayers = playersStatus.map((pl: any) => {
+      const [id, player]: any = Object.entries(pl)[0];
+      return {
+        id,
+        name: player.playerName,
+        status: player.status || "playing",
+        isReady: player.isReady,
+        isHost: player.isHost
+      };
+    });
+    setPlayers(newPlayers);
+  }, [])
+
+  const hanldeGameOver = useCallback((playersStatus) => {
+    handleSetPlayerStatus(playersStatus)
+
+    // setDialogMessage(message);
+    setOpenDialog(prev => ({ ...prev, end: true }));
+    setEndedGame(true);
+    setGameStarted(false);
+
+  }, [])
+
+  // Setup socket event listeners
+  useEffect(() => {
+
 
     const handlers = {
-      joinedRoom: handleJoinedRoom,
+      joinedRoom: ({ roomId, playerId }: any) => {
+        setRoomId(roomId);
+        setPlayerId(playerId);
+        onInRoom();
+      },
       setGames: handleSetGames,
-      canStartGame: ({ canStart, message }: { canStart: boolean; message: string }) => {
-        setGameStarted(canStart);
-        toast.success(message, { toastId: "canStartGame" });
+      updateState: handleDeltaUpdate,
+      playerStatusUpdate: handlePlayerStatusUpdate,
+      flagToggled: handleFlagToggled,
+      gameOver: hanldeGameOver,
+      gameStarted: () => {
+        setGameStarted(true);
+        setEndedGame(false);
+        toast.success("Game đã bắt đầu!");
       },
-      sendReplayGame: ({ message }: { message: string }) => {
+      replayRequested: ({ message }: any) => {
         setDialogMessage(message);
-        setOpenDialog((pre) => ({ ...pre, replay: true }));
+        setOpenDialog(prev => ({ ...prev, replay: true }));
       },
-      replayConfirmed: ({ gameStates, playerStates, playersStatus }: any) => {
-        setGameStates(gameStates);
-        setPlayerStates(normalizePlayerStates(playerStates));
-        setPlayers(
-          playersStatus.map((pl: any) => {
-            const [id, player]: any = Object.entries(pl)[0];
-            return {
-              id,
-              name: player.playerName,
-              status: "playing",
-              isReady: player.isReady,
-              isHost: player.isHost
-            };
-          })
-        );
+      replayConfirmed: () => {
         setGameStarted(true);
         setEndedGame(false);
         setOpenDialog({ end: false, replay: false });
-        toast.success("Trò chơi đã được bắt đầu lại!");
+        toast.success("Game đã được bắt đầu lại!");
       },
-      updateState: handleUpdateState,
-      gameOver: ({ winner, message }: any) => {
-        setDialogMessage(message || (winner === playerId ? "Bạn đã thắng!" : "Bạn đã thua!"));
-        setOpenDialog((pre) => ({ ...pre, end: true }));
-        setGameStarted(false);
-        setEndedGame(true);
-      },
-      playerLeft: ({ playersStatus, gameStates, playerStates }: any) => {
+      playerLeft: ({ playersStatus, gameState, playerState }: any) => {
         toast.info("Đối thủ đã rời phòng!");
-        const updatedPlayers: Player[] = playersStatus.map((pl: any) => {
+        setPlayers(playersStatus.map((pl: any) => {
           const [id, player]: any = Object.entries(pl)[0];
           return {
             id,
@@ -770,30 +205,29 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
             isReady: player.isReady,
             isHost: player.isHost
           };
-        });
-        setPlayers(updatedPlayers);
-        setGameStates(gameStates);
-        setPlayerStates(normalizePlayerStates(playerStates));
+        }));
+
+        if (gameState) {
+          setGameStates({ [playersStatus[0][0]]: gameState });
+        }
+
+        if (playerState) {
+          setPlayerStates(initializePlayerStates({ [playersStatus[0][0]]: playerState }));
+        }
+
         setGameStarted(false);
         setEndedGame(false);
       },
-      error: ({ message }: { message: string }) => toast.error(message),
-      roomFull: ({ message }: { message: string }) => toast.error(message),
-      playerNotReady: ({ message }: { message: string }) => toast.info(message),
-      replayDeclined: ({ message }: { message: string }) => {
-        toast.info(message || "Một người chơi đã từ chối chơi lại.");
-        setOpenDialog((pre) => ({ ...pre, replay: false }));
+      returnToLobby: () => {
+        resetGameState();
+        onLeaveRoom();
       },
-      returnToLobby: ({ message }: { message: string }) => {
+      error: ({ message }: any) => toast.error(message),
+      roomFull: ({ message }: any) => toast.error(message),
+      playerNotReady: ({ message }: any) => toast.info(message),
+      replayDeclined: ({ message }: any) => {
         toast.info(message);
-        setGameStates(null);
-        setPlayerStates(new Map());
-        setPlayers([]);
-        setRoomId("");
-        setPlayerId(null);
-        setGameStarted(false);
-        setEndedGame(false);
-        setOpenDialog({ end: false, replay: false });
+        setOpenDialog(prev => ({ ...prev, replay: false }));
       }
     };
 
@@ -806,181 +240,171 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
         socket.off(event, handler);
       });
     };
-  }, [playerId, normalizePlayerStates]);
+  }, [handleDeltaUpdate, initializePlayerStates, onInRoom, onLeaveRoom]);
 
-  useEffect(() => {
-    return setupSocketEvents();
-  }, [setupSocketEvents]);
+  const resetGameState = () => {
+    setGameStates(null);
+    setPlayerStates(new Map());
+    setPlayers([]);
+    setRoomId("");
+    setPlayerId(null);
+    setGameStarted(false);
+    setEndedGame(false);
+    setOpenDialog({ end: false, replay: false });
+  };
 
-  const joinRoom = useCallback(
-    (roomIdToJoin: string) => {
-      if (roomIdToJoin.trim()) {
-        socket.emit("joinRoom", roomIdToJoin, playerName);
-        onInRoom();
-      } else {
-        toast.error("Kiểm tra lại tên phòng!");
-      }
-    },
-    [playerName, socket, onInRoom]
-  );
+  const joinRoom = useCallback((roomIdToJoin: string) => {
+    if (roomIdToJoin.trim()) {
+      socket.emit("joinRoom", roomIdToJoin, playerName, configMode, maxPlayers);
+    } else {
+      toast.error("Vui lòng nhập ID phòng!");
+    }
+  }, [playerName, configMode, maxPlayers, socket]);
 
   const createRoom = useCallback(() => {
     const newRoomId = uuidv4();
     setRoomId(newRoomId);
-    socket.emit("joinRoom", newRoomId, playerName, configMode);
-    onInRoom();
-  }, [playerName, configMode, socket, onInRoom]);
+    socket.emit("joinRoom", newRoomId, playerName, configMode, maxPlayers);
+  }, [playerName, configMode, maxPlayers, socket]);
 
   const startGame = useCallback(() => {
     socket.emit("startGame", roomId);
-  }, [roomId, socket]);
-
-  const replayGame = useCallback(() => {
-    toast.success('Gửi lời mời thành công!');
-    socket.emit("replayGame", roomId);
   }, [roomId, socket]);
 
   const toggleReadyGame = useCallback(() => {
     socket.emit("toggleReadyGame", roomId);
   }, [roomId, socket]);
 
+  const replayGame = useCallback(() => {
+    socket.emit("replayGame", roomId);
+  }, [roomId, socket]);
+
   const leaveRoom = useCallback(() => {
     socket.emit("leaveRoom", roomId);
-    onLeaveRoom();
-  }, [roomId, socket, onLeaveRoom]);
+  }, [roomId, socket]);
 
   const copyRoomId = useCallback(() => {
     navigator.clipboard.writeText(roomId);
     toast.success("Đã sao chép ID phòng!");
   }, [roomId]);
 
-  const openCell = useCallback(
-    (index: number) => {
-      if (gameStates && !checkGameOver()) {
-        socket.emit("openCell", { roomId, index });
-      }
-    },
-    [gameStates, roomId, socket, checkGameOver]
-  );
+  const handleOpenCell = useCallback((index: number) => {
+    if (gameStates && gameStarted) {
+      socket.emit("openCell", { roomId, index });
+    }
+  }, [gameStates, gameStarted, roomId, socket]);
 
-  const chording = useCallback(
-    (index: number) => {
-      if (gameStates && !checkGameOver()) {
-        socket.emit("chording", { roomId, index });
-      }
-    },
-    [gameStates, roomId, socket, checkGameOver]
-  );
+  const handleToggleFlag = useCallback((index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (gameStates && gameStarted) {
+      socket.emit("toggleFlag", { roomId, index });
+    }
+  }, [gameStates, gameStarted, roomId, socket]);
 
-  const toggleFlag = useCallback(
-    (index: number, e: React.MouseEvent) => {
-      e.preventDefault();
-      if (gameStates && !checkGameOver()) {
-        socket.emit("toggleFlag", { roomId, index });
-      }
-    },
-    [gameStates, roomId, socket, checkGameOver]
-  );
+  const handleChording = useCallback((index: number) => {
+    if (gameStates && gameStarted) {
+      socket.emit("chording", { roomId, index });
+    }
+  }, [gameStates, gameStarted, roomId, socket]);
 
-  const renderBoard = useCallback(
-    (isOpponent: boolean, game: any) => {
-      if (!gameStates || !playerId) return null;
+  const renderBoard = useCallback((isOpponent: boolean, game: any, pId: string) => {
+    if (!game) return null;
 
-      const { ratioX, ratioY, cells } = game;
-      const currentPlayerState = playerStates.get(playerId);
-      const opponentId = Array.from(playerStates.keys()).find((id) => id !== playerId);
-      const opponentState = opponentId ? playerStates.get(opponentId) : null;
+    const { ratioX, ratioY, cells } = game;
+    const currentPlayerState = playerStates.get(pId);
+    const currentRevealed = currentPlayerState?.revealedCells || new Set();
+    const currentFlags = currentPlayerState?.flags || new Set();
 
-      const currentRevealed = currentPlayerState?.revealedCells || new Set();
-      const currentFlags = currentPlayerState?.flags || new Set();
-      const opponentRevealed = opponentState?.revealedCells || new Set();
-      const opponentFlags = opponentState?.flags || new Set();
+    return (
+      <Box
+        variant="boxChild"
+        className="grid gap-[1px] bg-gray-300"
+        style={{
+          gridTemplateColumns: `repeat(${ratioY}, 24px)`,
+          gridTemplateRows: `repeat(${ratioX}, 24px)`,
+        }}
+      >
+        {cells.map((cell: any, index: number) => {
 
-      // Tạo mảng cells một lần để tối ưu hiệu suất
-      return (
-        <div
-          className="grid gap-[1px] bg-gray-300 p-1 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm"
-          style={{
-            gridTemplateColumns: `repeat(${ratioY}, 24px)`,
-            gridTemplateRows: `repeat(${ratioX}, 24px)`,
-          }}
-        >
-          {cells.map((cell: any, index: number) => {
-            const isRevealed = isOpponent ? opponentRevealed.has(index) : currentRevealed.has(index);
-            const isFlagged = isOpponent ? opponentFlags.has(index) : currentFlags.has(index);
-            const canInteract = !isOpponent && !checkGameOver() && !isRevealed;
-            const interactive = canInteract && gameStarted;
-            const canChording = currentRevealed.has(index) && !isOpponent;
+          const isRevealed = currentRevealed.has(index);
+          const isFlagged = currentFlags.has(index);
+          const canInteract = !isOpponent && gameStarted && !isRevealed;
+          const interactive = canInteract && gameStarted;
+          const canChording = isRevealed && !isOpponent;
 
-            let content = "";
-            if (isFlagged) content = "🚩";
-            else if (isRevealed) {
-              content = cell.isMine ? "💣" : cell.count > 0 ? cell.count.toString() : "";
-            } else if (cell.isMarkHint) content = "x";
+          let content = "";
+          if (isFlagged) content = "🚩";
+          else if (isRevealed) {
+            content = cell.count > 0 ? cell.count.toString() : "";
+          } else if (endedGame && cell.isMine) {
+            content = '💣'
+          } else if (cell.isMarkHint) content = "x";
 
-            const cellClasses = [
-              isNumber(cell?.count) ? numberColorClasses.get(cell.count) : "",
-              "flex items-center justify-center w-6 h-6 text-sm font-bold",
-              isRevealed
-                ? "bg-gray-200"
-                : "bg-gray-300 border-t-2 border-l-2 border-b-2 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500",
-              interactive ? "cursor-pointer hover:bg-gray-400" : "cursor-default",
-            ].join(" ");
-
-            return (
-              <div
-                key={index}
-                className={cellClasses}
-                onClick={() => interactive ? openCell(index) : canChording ? chording(index) : undefined}
-                onContextMenu={canInteract ? (e) => toggleFlag(index, e) : undefined}
-              >
-                {content}
-              </div>
-            );
-          })}
-        </div>
-      );
-    },
-    [gameStates, playerStates, playerId, gameStarted, openCell, toggleFlag, chording, checkGameOver]
-  );
+          return (
+            <CellCpn
+              key={`${pId}-${index}`}
+              isRevealed={isRevealed}
+              count={cell.count}
+              canInteract={canInteract}
+              onClick={interactive ? () => handleOpenCell(index) : canChording ? () => handleChording(index) : undefined}
+              onContextMenu={canInteract ? (e) => handleToggleFlag(index, e) : undefined}
+            >
+              {content}
+            </CellCpn>
+          );
+        })}
+      </Box>
+    );
+  }, [gameStarted, handleOpenCell, handleToggleFlag, playerStates]);
 
   const renderPreGameForm = useCallback(() => {
     if (roomId && gameStates) return null;
 
     return (
-      <div className="mb-4 p-3 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm">
+      <Box>
         <MinesweeperModeSelector onModeChange={setConfigMode} />
-        <input
+        <Box
+          as='input'
           type="text"
           placeholder="Tên của bạn"
           value={playerName}
           onChange={(e) => setPlayerName(e.target.value)}
-          className="px-2 py-1 border border-gray-400 bg-white text-sm w-full mb-2 rounded-sm"
+          className="w-[75%]"
+        />
+        <Box
+          as='input'
+          type="number"
+          min={2}
+          max={5}
+          value={maxPlayers}
+          onChange={(e) => setMaxPlayers(Number(e.target.value))}
+          placeholder="Số người"
+          className="w-[25%]"
         />
         <div className="flex gap-2">
-          <input
+          <Box
+            as='input'
             type="text"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
             placeholder="Nhập Room ID"
-            className="px-2 py-1 border border-gray-400 bg-white text-sm flex-grow rounded-sm"
           />
-          <button
+          <Box
+            as="button"
             onClick={() => joinRoom(roomId)}
-            className="px-3 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
           >
             Vào phòng
-          </button>
-          <button
+          </Box>
+          <Box
+            as="button"
             onClick={createRoom}
-            className="px-3 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
           >
             Tạo phòng
-          </button>
+          </Box>
         </div>
-      </div>
+      </Box>
     );
-  }, [roomId, gameStates, playerName, joinRoom, createRoom]);
+  }, [roomId, gameStates, playerName, maxPlayers, joinRoom, createRoom]);
 
   const renderLobbyControls = useCallback(() => {
     if (gameStarted) return null;
@@ -988,33 +412,33 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
     if (currentPlayer?.isHost) {
       if (endedGame) {
         return (
-          <button
+          <Box
+            as='button'
             onClick={replayGame}
-            className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
           >
             Chơi lại
-          </button>
+          </Box>
         );
       }
-      return Object.keys(gameStates).length === 2 ? (
-        <button
+      return Object.keys(gameStates).length === maxPlayers ? (
+        <Box
+          as='button'
           onClick={startGame}
-          className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
         >
           Bắt đầu game
-        </button>
+        </Box>
       ) : (
         <BeatLoader size={8} color="#6B7280" />
       );
     }
 
     return (
-      <button
+      <Box
+        as='button'
         onClick={toggleReadyGame}
-        className="px-2 py-1 bg-gray-300 text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-sm rounded-sm"
       >
         {currentPlayer?.isReady ? "Hủy sẵn sàng" : "Sẵn sàng"}
-      </button>
+      </Box>
     );
   }, [gameStarted, currentPlayer, endedGame, gameStates, replayGame, startGame, toggleReadyGame]);
 
@@ -1022,32 +446,31 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
     const isCurrentPlayer = playerId === player.id;
 
     return (
-      <div
+      <Box
         key={player.id}
-        className={`flex items-center p-2 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${isCurrentPlayer ? "bg-gray-200" : ""}`}
+        className={`flex items-center ${isCurrentPlayer ? "bg-gray-200" : ""}`}
       >
         <div className="flex items-center justify-center w-6 h-6 mr-2 bg-gray-400 text-white text-xs rounded-sm">
           <FaUser />
         </div>
         <div className="flex-1">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <span className="font-medium text-sm text-gray-800">
               {player.name} {isCurrentPlayer && "(Bạn)"} {player.isHost && "(Host)"}
             </span>
-            {player.status === "won" && <FaCrown className="ml-1 text-yellow-500" size={12} />}
-            {player.status === "lost" && <FaSkull className="ml-1 text-gray-500" size={12} />}
             <div
               className={`ml-1 inline-block px-1 py-0.5 text-xs rounded-sm ${player.isReady ? "bg-green-200 text-green-800" : "bg-gray-400 text-gray-200"}`}
             >
               {player.isReady ? "Sẵn sàng" : "Chưa sẵn sàng"}
             </div>
           </div>
-          <div className="text-xs text-gray-500">
-            {player.status === "playing" ? "Đang chơi" :
-              player.status === "won" ? "Chiến thắng!" : "Thua cuộc"}
+          <div className="text-xs text-gray-500 flex items-center">
+            {player.status === "playing" ? "Đang chơi" : player.status === "won" ? "Chiến thắng!" : "Thua cuộc"}
+            {player.status === "won" && <FaCrown className="ml-1 text-yellow-500" size={12} />}
+            {player.status === "lost" && <FaSkull className="ml-1 text-gray-500" size={12} />}
           </div>
         </div>
-      </div>
+      </Box>
     );
   }, [playerId]);
 
@@ -1055,31 +478,33 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
     if (!roomId || !gameStates) return null;
 
     return (
-      <div className="mb-4 p-3 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm w-full">
+      <Box>
         <div className="flex justify-between items-center mb-2">
           <h3 className="font-bold text-sm text-gray-800">
             Phòng: <span className="ml-1 bg-gray-300 text-[#337ab7] px-2 py-1 text-xs rounded-sm">{roomId}</span>
           </h3>
           <div className="flex gap-2 items-center">
             {renderLobbyControls()}
-            <button
+            <Box
+              as='button'
               onClick={copyRoomId}
-              className="p-1 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-[#337ab7] rounded-sm"
+              className="text-[#337ab7]"
               title="Sao chép ID phòng"
             >
               <FaCopy size={12} />
-            </button>
-            <button
+            </Box>
+            <Box
+              as='button'
               onClick={leaveRoom}
-              className="p-1 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400 text-[#ff0000] rounded-sm"
+              className="text-[#ff0000]"
               title="Rời khỏi phòng"
             >
               <FaSignOutAlt size={12} />
-            </button>
+            </Box>
           </div>
         </div>
         <div className="space-y-1">{players.map(renderPlayerInfo)}</div>
-      </div>
+      </Box>
     );
   }, [roomId, gameStates, renderLobbyControls, copyRoomId, leaveRoom, players, renderPlayerInfo]);
 
@@ -1087,16 +512,18 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
     if (!gameStates || Object.keys(gameStates).length === 0) return null;
 
     return (
-      <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-4 items-start">
         {Object.entries(gameStates).map(([pId, game]) => (
-          <div key={pId} className="flex flex-col">
-            <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center">
+          <div key={pId} className="flex flex-col animate-fadeIn">
+            <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center flex-wrap">
               {players.find((p) => p.id === pId)?.name}
               <span className="ml-1 text-xs px-2 py-1 bg-gray-400 text-white rounded-sm">
                 {pId === playerId ? "Bạn" : "Đối thủ"}
               </span>
             </h3>
-            {renderBoard(pId !== playerId, game)}
+            <div className="overflow-x-auto">
+              {renderBoard(pId !== playerId, game, pId)}
+            </div>
           </div>
         ))}
       </div>
@@ -1104,38 +531,40 @@ const PvpPlay: React.FC<PvpPlayProp> = ({ socket, onInRoom, onLeaveRoom }) => {
   }, [gameStates, players, playerId, renderBoard]);
 
   return (
-    <div className="p-4 bg-gray-200 font-sans">
-      <header className="w-full max-w-[800px]">
+    <div className="p-2 sm:p-4 bg-gray-200 font-sans animate-fadeIn">
+      <header className="w-full">
         {renderPreGameForm()}
         {renderGameLobby()}
       </header>
       <main className="mt-4">
-        {renderGameBoards()}
+        <div className="overflow-x-auto">
+          {renderGameBoards()}
+        </div>
       </main>
       <CustomDialog
         open={openDialog.end}
         title="Kết thúc"
-        onClose={() => setOpenDialog((pre) => ({ ...pre, end: false }))}
+        onClose={() => setOpenDialog(prev => ({ ...prev, end: false }))}
       >
         <p className="text-sm text-gray-800">{dialogMessage}</p>
       </CustomDialog>
       <CustomDialog
         open={openDialog.replay}
         title="Mời chơi lại"
-        onClose={() => setOpenDialog((pre) => ({ ...pre, replay: false }))}
+        onClose={() => setOpenDialog(prev => ({ ...prev, replay: false }))}
         actions={[
           {
             label: "Chấp nhận",
             onClick: () => {
-              socket.emit("confirmReplay", { roomId, playerId });
-              setOpenDialog((pre) => ({ ...pre, replay: false }));
+              socket.emit("confirmReplay", { roomId });
+              setOpenDialog(prev => ({ ...prev, replay: false }));
             },
           },
           {
             label: "Từ chối",
             onClick: () => {
-              socket.emit("declineReplay", { roomId, playerId });
-              setOpenDialog((pre) => ({ ...pre, replay: false }));
+              socket.emit("declineReplay", { roomId });
+              setOpenDialog(prev => ({ ...prev, replay: false }));
             },
           },
         ]}

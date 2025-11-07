@@ -59,11 +59,12 @@ const CustomDialog: React.FC<CustomDialogProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 animate-fadeIn">
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className={`bg-gray-300 w-full ${sizeClasses[size]} p-4 border-2 border-t-white border-l-white border-b-gray-600 border-r-gray-600 font-sans relative m-4 rounded-sm`}
+        className={`bg-gray-300 ${sizeClasses[size]} p-4 border-2 border-t-white border-l-white border-b-gray-600 border-r-gray-600 font-sans relative m-4 rounded-sm transform transition-all duration-200 scale-100 animate-fadeIn`}
+        style={{ animation: 'fadeIn 200ms ease-out' }}
       >
         {/* Close button */}
         <button

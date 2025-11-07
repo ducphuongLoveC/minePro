@@ -134,13 +134,15 @@
 
 
 
-import { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import CustomDialog from "../components/CustomDialog";
 import { useAppDispatch, useAppSelector } from "../hooks/useRedux";
 import { selectServer } from "../store/features/serverOptions";
 import { toast } from "react-toastify";
 import io, { Socket } from "socket.io-client";
+import { Cog6ToothIcon, PlayIcon, ServerStackIcon, TrophyIcon, UserCircleIcon, UsersIcon } from "@heroicons/react/24/solid";
+import { Box } from "../components/UI/Box";
 
 // Define types for server and state
 interface Server {
@@ -170,11 +172,13 @@ function useSocketPing(serverUrl: string | null): SocketPingData {
   const socket = useMemo<Socket | null>(() => {
     if (!serverUrl) return null;
     return io(serverUrl, {
-      reconnectionAttempts: 5,
-      reconnectionDelay: 500,
-      timeout: 2000,
-      transports: ["websocket"],
+      transports: ["websocket"], // Chỉ sử dụng WebSocket
       upgrade: false,
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
     });
   }, [serverUrl]);
 
@@ -253,22 +257,40 @@ const PingIndicator: React.FC<PingIndicatorProps> = ({ latency, isConnected, con
 const MainLayout: React.FC = () => {
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showDialog, setShowDialog] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const dispatch = useAppDispatch();
   const { server, selectedServer } = useAppSelector((state: RootState) => state.serverOptions);
 
   const { latency, isConnected, connectionStatus } = useSocketPing(selectedServer);
 
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const [allServerPings, setAllServerPings] = useState<any>({});
 
-  const pingAllServers = async () => {
+  const pingAllServers = useCallback(async () => {
     const results: Record<string, number | null> = {};
     await Promise.all(
       server.map(async (srv: Server) => {
         const tempSocket = io(srv.path, {
-          autoConnect: true,
-          reconnection: false,
-          timeout: 2000,
           transports: ["websocket"],
+          upgrade: false,
+          forceNew: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          timeout: 20000,
         });
 
         try {
@@ -295,7 +317,7 @@ const MainLayout: React.FC = () => {
       })
     );
     setAllServerPings(results);
-  };
+  }, [server]);
 
   useEffect(() => {
     if (showDialog) {
@@ -303,84 +325,130 @@ const MainLayout: React.FC = () => {
       const interval = setInterval(pingAllServers, 8000);
       return () => clearInterval(interval);
     }
-  }, [showDialog, server]);
+  }, [showDialog, pingAllServers]);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-200 font-sans">
+    <div className="flex flex-col bg-gray-200 font-sans h-[100vh] overflow-hidden">
       {/* Topbar */}
-      <div className="flex justify-end items-center px-4 py-2 bg-gray-200 border-b-2 border-t-white border-b-gray-500 relative">
+      <Box className="flex justify-between items-center relative shrink-0">
+        {/* Hamburger menu cho mobile */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden p-2 hover:bg-gray-300 rounded transition-colors"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
         <div className="flex items-center gap-4 mr-4">
           {selectedServer ? (
             <PingIndicator latency={latency} isConnected={isConnected} connectionStatus={connectionStatus} />
           ) : (
-            <span className="text-sm text-gray-800">Chưa chọn server</span>
+            <span className="text-xs sm:text-sm text-gray-800">Chưa chọn server</span>
           )}
         </div>
 
         <div className="relative">
-          <button
+          <Box
+            as='button'
             onClick={() => setShowMenu(!showMenu)}
-            className="flex items-center gap-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 px-2 py-1 bg-gray-200 hover:bg-gray-300"
+            className="flex items-center gap-2 text-xs sm:text-sm font-medium"
           >
-            🧑 UserFake ▼
-          </button>
+            <UserCircleIcon className="w-5 h-5 text-gray-800" /> 
+            <span className="hidden sm:inline">User ▼</span>
+          </Box>
 
           {showMenu && (
-            <div className="absolute right-0 mt-1 w-48 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 shadow z-10">
-              <button
+            <Box className="absolute right-0 mt-1 z-10 w-48 animate-fadeIn">
+              <Box
+                as={'button'}
                 onClick={() => {
                   setShowDialog(true);
                   setShowMenu(false);
                 }}
-                className="block w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-gray-400"
+                className="w-full text-left"
               >
-                ⚙️ Cấu hình server
-              </button>
-              <button className="block w-full text-left px-3 py-2 text-sm text-gray-800 hover:bg-gray-400">
-                🚪 Đăng xuất
-              </button>
-            </div>
+                <ServerStackIcon className="w-5 h-5 text-gray-800 inline-block mr-1" /> Cấu hình server
+              </Box>
+              <Box as={'button'} className="w-full text-left">
+                Đăng xuất
+              </Box>
+            </Box>
           )}
         </div>
-      </div>
+      </Box>
 
       {/* Main layout */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Overlay cho mobile khi sidebar mở */}
+        {isMobile && sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
         {/* Sidebar */}
-        <div className="w-56 bg-gray-200 p-3 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 flex flex-col">
-          <h1 className="text-lg font-bold text-gray-800 mb-6">Minesweeper</h1>
-          <nav className="flex-1">
+        <aside 
+          className={`
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            ${isMobile ? 'fixed z-30' : 'relative'}
+            w-56 bg-gray-200 p-3 border-r-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 
+            flex flex-col h-full transition-transform duration-300 ease-in-out
+          `}
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-lg font-bold text-gray-800">Minesweeper</h1>
+            {isMobile && (
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 hover:bg-gray-300 rounded"
+                aria-label="Close menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          <nav className="flex-1 overflow-y-auto">
             <ul className="space-y-1">
               {[
-                { to: "/", label: "🎮 Chơi đơn" },
-                { to: "/pvp", label: "👥 Chơi PVP" },
-                { to: "/leaderboard", label: "🏆 Bảng xếp hạng" },
-                { to: "/settings", label: "⚙️ Cài đặt" },
+                { to: "/", label: "Chơi đơn", icon: <PlayIcon className="w-5 h-5 text-green-600" /> },
+                { to: "/pvp", label: "Chơi PVP", icon: <UsersIcon className="w-5 h-5 text-blue-600" /> },
+                { to: "/leaderboard", label: "Bảng xếp hạng", icon: <TrophyIcon className="w-5 h-5 text-yellow-500" /> },
+                { to: "/settings", label: "Cài đặt", icon: <Cog6ToothIcon className="w-5 h-5 text-gray-700" /> },
               ].map((item) => (
                 <li key={item.to}>
                   <NavLink
                     to={item.to}
+                    onClick={() => isMobile && setSidebarOpen(false)}
                     className={({ isActive }) =>
-                      `block px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm ${
+                      `flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-800 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm transition-colors ${
                         isActive ? "bg-gray-200" : "bg-gray-300 hover:bg-gray-400"
                       }`
                     }
                   >
+                    {item.icon}
                     {item.label}
                   </NavLink>
                 </li>
               ))}
             </ul>
           </nav>
+
           <div className="mt-auto pt-3 border-t-2 border-t-white border-b-gray-500">
             <div className="text-xs text-gray-500">Phiên bản 1.0.0</div>
           </div>
-        </div>
+        </aside>
 
         {/* Main content */}
-        <div className="flex-1 overflow-auto p-4 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500">
+        <main className="flex-1 overflow-auto p-2 sm:p-4 bg-gray-200 border-2 border-t-white border-l-white">
           <Outlet />
-        </div>
+        </main>
       </div>
 
       {/* Server configuration dialog with radio buttons */}

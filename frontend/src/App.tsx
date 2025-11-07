@@ -2,8 +2,7 @@ import { useEffect } from "react";
 import React from "react";
 import AppRoutes from "./routes";
 import { BrowserRouter } from "react-router-dom";
-
-
+import ErrorBoundary from "./components/ErrorBoundary";
 
 function App() {
     useEffect(() => {
@@ -16,10 +15,13 @@ function App() {
             document.removeEventListener("contextmenu", handleContextMenu);
         };
     }, []);
+
     return (
-        <BrowserRouter>
-            <AppRoutes />
-        </BrowserRouter>
+        <ErrorBoundary>
+            <BrowserRouter>
+                <AppRoutes />
+            </BrowserRouter>
+        </ErrorBoundary>
     );
 }
 

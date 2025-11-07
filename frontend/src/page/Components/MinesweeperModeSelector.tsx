@@ -1,145 +1,25 @@
-// import React, { useState } from "react";
-
-// interface GameMode {
-//   name: string;
-//   rows: number;
-//   cols: number;
-//   mines?: number;
-// }
-
-// const gameModes: GameMode[] = [
-//   { name: "Beginner", rows: 9, cols: 9 },
-//   { name: "Intermediate", rows: 16, cols: 16 },
-//   { name: "Expert", rows: 16, cols: 30 },
-// ];
-
-// interface MinesweeperModeSelectorProps {
-//   onModeChange: (mode: GameMode) => void;
-// }
-
-// const MinesweeperModeSelector: React.FC<MinesweeperModeSelectorProps> = ({ onModeChange }) => {
-//   const [selectedMode, setSelectedMode] = useState<GameMode>(gameModes[0]);
-//   const [showCustom, setShowCustom] = useState(false);
-//   const [customMode, setCustomMode] = useState<GameMode>({
-//     name: "Custom",
-//     rows: 10,
-//     cols: 10,
-//     mines: 20,
-//   });
-  
-//   const handleModeSelect = (mode: GameMode) => {
-//     setSelectedMode(mode);
-//     onModeChange(mode);
-//     setShowCustom(false);
-//   };
-
-//   const handleCustomSubmit = () => {
-//     const validatedMode = {
-//       ...customMode,
-//       mines: Math.min(customMode?.mines || 20, Math.floor(customMode.rows * customMode.cols * 0.35)),
-//     };
-//     handleModeSelect(validatedMode);
-//   };
-
-//   return (
-//     <div className="w-full max-w-[300px] font-sans my-2">
-//       <h1 className="text-lg font-bold text-gray-800 mb-3">Chọn chế độ</h1>
-//       <div className="flex flex-col gap-1">
-//         {gameModes.map((mode) => (
-//           <button
-//             key={mode.name}
-//             onClick={() => handleModeSelect(mode)}
-//             className={`py-2 px-3 text-left border-2 font-medium text-sm rounded-sm ${
-//               selectedMode.name === mode.name && !showCustom
-//                 ? "bg-gray-200 border-t-white border-l-white border-b-gray-500 border-r-gray-500"
-//                 : "bg-gray-300 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400"
-//             }`}
-//           >
-//             {mode.name} ({mode.rows}x{mode.cols})
-//           </button>
-//         ))}
-//         <button
-//           onClick={() => setShowCustom(!showCustom)}
-//           className={`py-2 px-3 text-left border-2 font-medium text-sm rounded-sm ${
-//             showCustom || selectedMode.name === "Custom"
-//               ? "bg-gray-200 border-t-white border-l-white border-b-gray-500 border-r-gray-500"
-//               : "bg-gray-300 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400"
-//           }`}
-//         >
-//           Chế độ tùy chỉnh {showCustom ? "▲" : "▼"}
-//         </button>
-//         {showCustom && (
-//           <div className="mt-2 p-3 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm">
-//             <div className="grid grid-cols-2 gap-2 mb-2">
-//               <div>
-//                 <label className="block text-xs text-gray-800 mb-1">Hàng</label>
-//                 <input
-//                   type="number"
-//                   min="1"
-//                   max="20"
-//                   value={customMode.rows}
-//                   onChange={(e) =>
-//                     setCustomMode({ ...customMode, rows: parseInt(e.target.value) || 5 })
-//                   }
-//                   className="w-full px-1 py-1 border border-gray-400 text-sm bg-white rounded-sm"
-//                 />
-//               </div>
-//               <div>
-//                 <label className="block text-xs text-gray-800 mb-1">Cột</label>
-//                 <input
-//                   type="number"
-//                   min="1"
-//                   max="30"
-//                   value={customMode.cols}
-//                   onChange={(e) =>
-//                     setCustomMode({ ...customMode, cols: parseInt(e.target.value) || 5 })
-//                   }
-//                   className="w-full px-1 py-1 border border-gray-400 text-sm bg-white rounded-sm"
-//                 />
-//               </div>
-//             </div>
-//             <div>
-//               <label className="block text-xs text-gray-800 mb-1">Bom</label>
-//               <input
-//                 type="number"
-//                 min="1"
-//                 max={Math.floor(customMode.rows * customMode.cols * 0.35)}
-//                 value={customMode.mines}
-//                 onChange={(e) =>
-//                   setCustomMode({ ...customMode, mines: parseInt(e.target.value) || 1 })
-//                 }
-//                 className="w-full px-1 py-1 border border-gray-400 text-sm bg-white rounded-sm"
-//               />
-//             </div>
-//             <button
-//               onClick={handleCustomSubmit}
-//               className="mt-2 w-full py-1 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 text-sm hover:bg-gray-400 rounded-sm"
-//             >
-//               Lưu
-//             </button>
-//           </div>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default MinesweeperModeSelector;
-
-
-import React, { useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  Cog6ToothIcon,
+  SparklesIcon,
+  CheckCircleIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from "@heroicons/react/24/solid";
+import { Box } from "../../components/UI/Box";
 
 interface GameMode {
   name: string;
   rows: number;
   cols: number;
   mines?: number;
+  isMark?: boolean;
 }
 
 const gameModes: GameMode[] = [
-  { name: "Beginner", rows: 9, cols: 9 },
-  { name: "Intermediate", rows: 16, cols: 16 },
-  { name: "Expert", rows: 16, cols: 30 },
+  { name: "Dễ", rows: 9, cols: 9 },
+  { name: "Trung", rows: 16, cols: 16 },
+  { name: "Khó", rows: 16, cols: 30 },
 ];
 
 interface MinesweeperModeSelectorProps {
@@ -154,110 +34,137 @@ const MinesweeperModeSelector: React.FC<MinesweeperModeSelectorProps> = ({ onMod
     rows: 10,
     cols: 10,
     mines: 20,
+    isMark: false,
   });
 
-  const handleModeSelect = (mode: GameMode) => {
+  const handleModeSelect = useCallback((mode: GameMode) => {
     setSelectedMode(mode);
     onModeChange(mode);
     setShowCustom(false);
-  };
+  }, [onModeChange]);
 
-  const handleCustomSubmit = () => {
-    const validatedMode = {
-      ...customMode,
-      mines: Math.min(customMode?.mines || 20, Math.floor(customMode.rows * customMode.cols * 0.35)),
-    };
+  const handleCustomSubmit = useCallback(() => {
+    const validatedMode = { ...customMode };
     handleModeSelect(validatedMode);
-  };
+  }, [customMode, handleModeSelect]);
+
+  const handleCustomChange = useCallback((field: keyof GameMode, value: any) => {
+    setCustomMode(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  useEffect(() => {
+    onModeChange(selectedMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const modeButtons = useMemo(() => 
+    gameModes.map((mode) => (
+      <button
+        key={mode.name}
+        onClick={() => handleModeSelect(mode)}
+        className={`flex items-center justify-center gap-2 transition-colors ${
+          selectedMode.name === mode.name && !showCustom
+            ? "bg-gray-200 border-t-white border-l-white border-b-gray-500 border-r-gray-500"
+            : "bg-gray-300 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400"
+        } border-2 font-medium text-xs sm:text-sm rounded-sm px-1 py-1`}
+      >
+        {selectedMode.name === mode.name && !showCustom && (
+          <CheckCircleIcon className="w-4 h-4 text-green-600" />
+        )}
+        {mode.name}
+      </button>
+    ))
+  , [selectedMode.name, showCustom, handleModeSelect]);
 
   return (
-    <div className="w-full max-w-[500px] font-sans my-3">
-      <h1 className="text-lg font-bold text-gray-800 mb-3">Chọn chế độ</h1>
-      <div className="flex flex-row flex-wrap gap-2">
-        {gameModes.map((mode) => (
-          <button
-            key={mode.name}
-            onClick={() => handleModeSelect(mode)}
-            className={`py-2 px-4 text-center border-2 font-medium text-sm rounded-sm min-w-[100px] ${selectedMode.name === mode.name && !showCustom
-                ? "bg-gray-200 border-t-white border-l-white border-b-gray-500 border-r-gray-500"
-                : "bg-gray-300 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400"
-              }`}
-            aria-label={`Select ${mode.name} mode (${mode.rows}x${mode.cols})`}
-          >
-            {mode.name}
-          </button>
-        ))}
+    <div className="font-sans animate-fadeIn">
+      <h1 className="text-base sm:text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+        <SparklesIcon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500" />
+        Chọn chế độ
+      </h1>
+      <div className="flex my-1 gap-1 flex-wrap">
+        {modeButtons}
         <button
           onClick={() => setShowCustom(!showCustom)}
-          className={`py-2 px-4 text-center border-2 font-medium text-sm rounded-sm min-w-[100px] ${showCustom || selectedMode.name === "Custom"
+          className={`flex items-center justify-center gap-2 transition-colors ${
+            showCustom || selectedMode.name === "Custom"
               ? "bg-gray-200 border-t-white border-l-white border-b-gray-500 border-r-gray-500"
               : "bg-gray-300 border-t-white border-l-white border-b-gray-500 border-r-gray-500 hover:bg-gray-400"
-            }`}
-          aria-label="Toggle custom mode settings"
+          } border-2 font-medium text-xs sm:text-sm rounded-sm px-1 py-1`}
         >
-          Tùy chỉnh {showCustom ? "▲" : "▼"}
+          <Cog6ToothIcon className="w-4 h-4 text-blue-600" />
+          Chỉnh
+          {showCustom ? (
+            <ArrowUpIcon className="w-4 h-4 text-gray-600" />
+          ) : (
+            <ArrowDownIcon className="w-4 h-4 text-gray-600" />
+          )}
         </button>
       </div>
       {showCustom && (
-        <div className="mt-4 p-4 bg-gray-200 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 rounded-sm">
-          <div className="grid grid-cols-3 gap-3 mb-3">
+        <Box className="inline-block animate-fadeIn">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
             <div>
               <label className="block text-xs text-gray-800 mb-1">Hàng</label>
-              <input
+              <Box 
+                as="input"
                 type="number"
                 min="1"
                 max="20"
                 value={customMode.rows}
-                onChange={(e) =>
-                  setCustomMode({ ...customMode, rows: parseInt(e.target.value) || 5 })
-                }
-                className="w-full px-2 py-1 border border-gray-400 text-sm bg-white rounded-sm focus:outline-none"
-                aria-label="Number of rows"
+                onChange={(e) => handleCustomChange('rows', parseInt(e.target.value) || 5)}
                 placeholder="1-20"
+                className="w-full"
               />
             </div>
             <div>
               <label className="block text-xs text-gray-800 mb-1">Cột</label>
-              <input
+              <Box 
+                as="input"
                 type="number"
                 min="1"
                 max="30"
                 value={customMode.cols}
-                onChange={(e) =>
-                  setCustomMode({ ...customMode, cols: parseInt(e.target.value) || 5 })
-                }
-                className="w-full px-2 py-1 border border-gray-400 text-sm bg-white rounded-sm focus:outline-none"
-                aria-label="Number of columns"
+                onChange={(e) => handleCustomChange('cols', parseInt(e.target.value) || 5)}
                 placeholder="1-30"
+                className="w-full"
               />
             </div>
             <div>
               <label className="block text-xs text-gray-800 mb-1">Bom</label>
-              <input
+              <Box 
+                as="input"
                 type="number"
                 min="1"
-                max={Math.floor(customMode.rows * customMode.cols * 0.35)}
                 value={customMode.mines}
-                onChange={(e) =>
-                  setCustomMode({ ...customMode, mines: parseInt(e.target.value) || 1 })
-                }
-                className="w-full px-2 py-1 border border-gray-400 text-sm bg-white rounded-sm focus:outline-none"
-                aria-label="Number of mines"
-                placeholder={`1-${Math.floor(customMode.rows * customMode.cols * 0.35)}`}
+                onChange={(e) => handleCustomChange('mines', parseInt(e.target.value) || 1)}
+                className="w-full"
               />
             </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-xs text-gray-800 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={customMode.isMark}
+                  onChange={(e) => handleCustomChange('isMark', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Đánh dấu
+              </label>
+            </div>
           </div>
-          <button
-            onClick={handleCustomSubmit}
-            className="w-full py-2 bg-gray-300 border-2 border-t-white border-l-white border-b-gray-500 border-r-gray-500 text-sm font-medium hover:bg-gray-400 rounded-sm"
-            aria-label="Save custom mode"
+          <Box 
+            as="button" 
+            onClick={handleCustomSubmit} 
+            className="flex items-center justify-center gap-2 w-full hover:scale-105 transition-transform"
           >
-            Lưu
-          </button>
-        </div>
+            <CheckCircleIcon className="w-4 h-4 text-green-600" />
+            Lưu cấu hình
+          </Box>
+        </Box>
       )}
     </div>
   );
 };
 
-export default MinesweeperModeSelector;
+export default React.memo(MinesweeperModeSelector);

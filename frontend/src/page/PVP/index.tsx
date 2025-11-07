@@ -1,71 +1,3 @@
-// import React, { useEffect, useState } from "react";
-// import io from "socket.io-client";
-// import PvpPlay from "./PvpPlay";
-// import RoomList from "../Components/RoomList";
-// import { useAppSelector } from "../../hooks/useRedux";
-
-
-// interface Room {
-//     id: string;
-//     name: string;
-//     currentPlayers: number;
-//     maxPlayers: number
-// }
-
-// const PVP: React.FC = () => {
-//     const [rooms, setRooms] = useState<Room[]>([]);
-//     const [isInRoom, setIsInRoom] = useState(false);
-
-//     const { selectedServer } = useAppSelector((state) => state.serverOptions);
-
-//     useEffect(() => {
-
-//         const socket = io(`${selectedServer}/pvp`, {
-//             transports: ["websocket"],
-//         });
-
-//         const handleRoomList = (updatedRooms: any[]) => {
-//             setRooms(
-//                 updatedRooms.map((room) => ({
-//                     id: room.id,
-//                     name: room.name || `Phòng ${room.id}`,
-//                     currentPlayers: room.currentPlayers,
-//                     maxPlayers: room.maxPlayers,
-//                 }))
-//             );
-//         };
-
-//         socket.on("roomList", handleRoomList);
-
-//         socket.emit("emitRoomList");
-
-//         return () => {
-//             socket.off("roomList", handleRoomList);
-//         };
-//     }, [selectedServer]);
-
-//     return (
-//         <div className="flex">
-//             {!isInRoom && (
-//                 <RoomList
-//                     rooms={rooms}
-//                     onJoinRoom={(id) => {
-//                         socket.emit("joinRoom", id);
-//                         setIsInRoom(true);
-//                     }}
-//                 />
-//             )}
-//             <PvpPlay
-//                 socket={socket}
-//                 onInRoom={() => setIsInRoom(true)}
-//                 onLeaveRoom={() => setIsInRoom(false)}
-//             />
-//         </div>
-//     );
-// };
-
-// export default PVP;
-
 import React, { useEffect, useState, useRef } from "react";
 import io, { Socket } from "socket.io-client";
 import PvpPlay from "./PvpPlay";
@@ -103,7 +35,12 @@ const PVP: React.FC = () => {
 
         const socket = io(`${selectedServer}/pvp`, {
             transports: ["websocket"],
-            reconnectionAttempts: 3,
+            upgrade: false,
+            forceNew: true,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 20000,
         });
         socketRef.current = socket;
 
@@ -150,21 +87,19 @@ const PVP: React.FC = () => {
         }
     };
 
-    if (isLoading) {
-        return <div>Loading rooms...</div>;
-    }
-
-    if (error) {
-        return <div>Error: {error}</div>;
-    }
-
     return (
-        <div className="flex">
+        <div className="flex flex-col sm:flex-row animate-fadeIn">
             {!isInRoom && (
                 <RoomList
                     rooms={rooms}
                     onJoinRoom={handleJoinRoom}
+                    isLoading={isLoading}
                 />
+            )}
+            {error && (
+                <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded m-4">
+                    <strong>Lỗi:</strong> {error}
+                </div>
             )}
             {socketRef.current && (
                 <PvpPlay
